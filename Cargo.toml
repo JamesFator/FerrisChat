@@ -1,7 +1,12 @@
 [package]
 name = "ferris_chat"
 version = "0.1.0"
-authors = ["jamesfator"]
+authors = ["James Fator <jamesfator@gmail.com>"]
+edition = "2018"
 
 [dependencies]
-stdweb = "0.4.12"
+serde= { version = "^1.0.44", features = ["derive"] }
+specs = { version = "0.16.1", features = ["serde"] }
+specs-derive = "0.4.1"
+serde_json = "^1.0.44"
+stdweb = "0.4.20"
