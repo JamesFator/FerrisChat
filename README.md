@@ -8,7 +8,10 @@ $ cargo install cargo-web
 
 ## Running
 ```bash
-cargo web start
+# Build code and run local webserver
+$ cargo web start
+
+# Load http://127.0.0.1:8000/
 ```
 
 ## Resources

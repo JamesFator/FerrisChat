@@ -63,8 +63,28 @@ fn main() {
         .create_entity()
         .with(Location { x: 9, y: 9 })
         .with(PlayerInfo {
-            name: String::from("ferris"),
+            name: String::from("Ferris"),
             color: String::from("red"),
+        })
+        .build();
+
+    gs.borrow_mut()
+        .ecs
+        .create_entity()
+        .with(Location { x: 1, y: 1 })
+        .with(PlayerInfo {
+            name: String::from("Geoff"),
+            color: String::from("blue"),
+        })
+        .build();
+
+    gs.borrow_mut()
+        .ecs
+        .create_entity()
+        .with(Location { x: 17, y: 15 })
+        .with(PlayerInfo {
+            name: String::from("Tammy"),
+            color: String::from("purple"),
         })
         .build();
 
@@ -77,7 +97,7 @@ fn main() {
     stdweb::web::document().add_event_listener({
         let gs = gs.clone();
         move |event: KeyDownEvent| {
-            handle_input(&mut gs.borrow_mut().ecs, event.key().as_ref(), "ferris");
+            handle_input(&mut gs.borrow_mut().ecs, event.key().as_ref(), "Ferris");
         }
     });
 

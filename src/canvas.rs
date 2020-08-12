@@ -36,7 +36,7 @@ impl Canvas {
         }
     }
 
-    pub fn draw(&self, x: u32, y: u32, color: &str) {
+    pub fn draw(&self, x: u32, y: u32, color: &str, name: &str) {
         assert!(x < self.width);
         assert!(y < self.height);
 
@@ -45,16 +45,28 @@ impl Canvas {
         let x = x * self.scaled_width;
         let y = y * self.scaled_height;
 
-        self.ctx.fill_rect(
+        if color != "" {
+            self.ctx.fill_rect(
+                f64::from(x),
+                f64::from(y),
+                f64::from(self.scaled_width),
+                f64::from(self.scaled_height),
+            );
+        }
+
+        // let name_y = (y + 1) * self.scaled_height;
+        self.ctx.set_fill_style_color("black");
+        self.ctx.set_font("20px helvetica");
+        self.ctx.fill_text(
+            name,
             f64::from(x),
-            f64::from(y),
-            f64::from(self.scaled_width),
-            f64::from(self.scaled_height),
+            y as f64 + self.scaled_height as f64 * 1.5,
+            Some(2000f64),
         );
     }
 
     pub fn clear_all(&self) {
-        self.ctx.set_fill_style_color("white");
+        self.ctx.set_fill_style_color("#fae7c9");
         self.ctx.fill_rect(
             0.0,
             0.0,
