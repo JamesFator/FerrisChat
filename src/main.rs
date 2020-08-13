@@ -9,6 +9,8 @@ mod map;
 pub use map::{draw, handle_input, Map};
 mod movement;
 use movement::MovementSystem;
+mod disappearing;
+use disappearing::DisappearingSystem;
 
 use specs::prelude::*;
 
@@ -26,13 +28,38 @@ impl State {
     fn run_systems(&mut self) {
         let mut movement_system = MovementSystem {};
         movement_system.run_now(&self.ecs);
+        let mut disappearing_system = DisappearingSystem {};
+        disappearing_system.run_now(&self.ecs);
 
         self.ecs.maintain();
+    }
+
+    fn read_from_local_storage(&mut self) {
+        // Check for chat_input
+        let imput = stdweb::web::window().local_storage().get("chat_input");
+        if imput.is_some() {
+            self.ecs
+                .create_entity()
+                .with(Location { x: 4, y: 15 })
+                .with(PlayerInfo {
+                    name: String::from(imput.unwrap()),
+                    color: String::from("green"),
+                })
+                .with(Disappearing {
+                    total_ticks: 100,
+                    ticks_left: 100,
+                })
+                .build();
+        }
+        stdweb::web::window().local_storage().remove("chat_input");
     }
 
     fn tick(&mut self) {
         // Run all our ECS systems
         self.run_systems();
+
+        // Check the window local storage for updates
+        self.read_from_local_storage();
 
         let canvas = self.ecs.fetch::<Canvas>();
 
@@ -41,8 +68,11 @@ impl State {
 
         let locations = self.ecs.read_storage::<Location>();
         let player_infos = self.ecs.read_storage::<PlayerInfo>();
-        for (location, player_info) in (&locations, &player_infos).join() {
-            draw(&canvas, &location, &player_info);
+        let entities = self.ecs.entities();
+        let disappearings = self.ecs.read_storage::<Disappearing>();
+        for (entity, location, player_info) in (&entities, &locations, &player_infos).join() {
+            let disappearing = disappearings.get(entity);
+            draw(&canvas, &location, &player_info, disappearing);
         }
     }
 }
@@ -57,6 +87,7 @@ fn main() {
     gs.borrow_mut().ecs.register::<PlayerInfo>();
     gs.borrow_mut().ecs.register::<Location>();
     gs.borrow_mut().ecs.register::<WantsToMoveTo>();
+    gs.borrow_mut().ecs.register::<Disappearing>();
 
     gs.borrow_mut()
         .ecs

@@ -49,15 +49,29 @@ pub fn handle_input(ecs: &mut World, input: &str, for_name: &str) {
                 name: String::from("💩"),
                 color: String::from(""),
             })
+            .with(Disappearing {
+                total_ticks: 100,
+                ticks_left: 100,
+            })
             .build();
     }
 }
 
-pub fn draw(canvas: &Canvas, location: &Location, player_info: &PlayerInfo) {
+pub fn draw(
+    canvas: &Canvas,
+    location: &Location,
+    player_info: &PlayerInfo,
+    disappearing: Option<&Disappearing>,
+) {
+    let alpha = match disappearing {
+        None => 1f64,
+        Some(disappearing) => disappearing.ticks_left as f64 / disappearing.total_ticks as f64,
+    };
     canvas.draw(
         location.x as u32,
         location.y as u32,
         &player_info.color,
         &player_info.name,
+        alpha,
     );
 }

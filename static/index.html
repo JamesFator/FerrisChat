@@ -8,6 +8,11 @@
 
     <body style=background-color:#67bde0>
         <canvas id="canvas" width="800" height="800"></canvas>
+        <div>
+            <input id="chat_input" type="text">
+            <button onclick="window.localStorage.setItem('chat_input', document.getElementById('chat_input').value);">Chat!</button>
+        </div>
         <script src="ferris_chat.js"></script>
+        
     </body>
 </html>

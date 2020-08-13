@@ -36,9 +36,11 @@ impl Canvas {
         }
     }
 
-    pub fn draw(&self, x: u32, y: u32, color: &str, name: &str) {
+    pub fn draw(&self, x: u32, y: u32, color: &str, name: &str, alpha: f64) {
         assert!(x < self.width);
         assert!(y < self.height);
+
+        self.ctx.set_global_alpha(alpha);
 
         self.ctx.set_fill_style_color(color);
 
@@ -63,6 +65,8 @@ impl Canvas {
             y as f64 + self.scaled_height as f64 * 1.5,
             Some(2000f64),
         );
+
+        self.ctx.set_global_alpha(1f64);
     }
 
     pub fn clear_all(&self) {

@@ -18,3 +18,9 @@ pub struct WantsToMoveTo {
     pub x: i32,
     pub y: i32,
 }
+
+#[derive(Component)]
+pub struct Disappearing {
+    pub total_ticks: u32,
+    pub ticks_left: u32,
+}
