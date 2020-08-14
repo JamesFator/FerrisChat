@@ -14,7 +14,7 @@ use canvas::{Canvas, DrawSystem};
 mod components;
 pub use components::*;
 mod map;
-pub use map::Map;
+pub use map::{generate_map, Map};
 mod movement;
 use movement::MovementSystem;
 mod disappearing;
@@ -215,6 +215,7 @@ fn main() {
     gs.borrow_mut().ecs.insert(canvas);
 
     let map = Map { width, height };
+    generate_map(&mut gs.borrow_mut().ecs, &map);
     gs.borrow_mut().ecs.insert(map);
 
     stdweb::web::document().add_event_listener({
