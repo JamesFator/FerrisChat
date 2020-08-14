@@ -15,8 +15,8 @@ fn create_knife(ecs: &mut World, x: i32, y: i32) {
         .with(Location { x, y })
         .with(Renderable {
             text_renderable: Some(TextRenderable {
-                text: String::from("🗡"),
-                offset_x: -0.25f64,
+                text: String::from("🔪"),
+                offset_x: 1.75f64,
                 offset_y: -1.25f64,
             }),
             graphic_renderable: None,
