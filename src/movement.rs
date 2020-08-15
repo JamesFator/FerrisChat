@@ -1,6 +1,5 @@
 use super::{Location, Map, WantsToMoveTo};
 use specs::prelude::*;
-use std::cmp;
 
 pub struct MovementSystem {}
 
@@ -8,17 +7,39 @@ impl<'a> System<'a> for MovementSystem {
     type SystemData = (
         ReadExpect<'a, Map>,
         WriteStorage<'a, Location>,
-        WriteStorage<'a, WantsToMoveTo>,
+        ReadStorage<'a, WantsToMoveTo>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (map, mut locations, mut move_tos) = data;
+        let (_map, mut locations, move_tos) = data;
 
         for (mut location, move_to) in (&mut locations, &move_tos).join() {
-            location.x = cmp::min(cmp::max(move_to.x, 0), map.width - 1);
-            location.y = cmp::min(map.height - 1, cmp::max(move_to.y, 0));
+            let speed: i32 = 10;
+            let dist_x = move_to.x - location.x;
+            let dist_y = move_to.y - location.y;
+            let mut new_x = location.x;
+            let mut new_y = location.y;
+            if dist_x == 0 && dist_y == 0 {
+                continue; // This entity has reached its desination
+            } else if dist_x.abs() > dist_y.abs() {
+                if speed > dist_x.abs() {
+                    new_x = move_to.x;
+                } else if dist_x > 0 {
+                    new_x += speed;
+                } else {
+                    new_x -= speed;
+                }
+            } else {
+                if speed > dist_y.abs() {
+                    new_y = move_to.y;
+                } else if dist_y > 0 {
+                    new_y += speed;
+                } else {
+                    new_y -= speed;
+                }
+            }
+            location.x = new_x;
+            location.y = new_y;
         }
-
-        move_tos.clear();
     }
 }

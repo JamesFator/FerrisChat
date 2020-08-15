@@ -69,11 +69,11 @@ impl<'a> System<'a> for DrawSystem {
     }
 }
 
+pub const STANDARD_TILE: f64 = 100_f64;
+
 pub struct Canvas {
     pub canvas: CanvasElement,
     pub ctx: CanvasRenderingContext2d,
-    scaled_width: u32,
-    scaled_height: u32,
     width: u32,
     height: u32,
 }
@@ -89,14 +89,9 @@ impl Canvas {
 
         let ctx: CanvasRenderingContext2d = canvas.get_context().unwrap();
 
-        let scaled_width = canvas.width() / width;
-        let scaled_height = canvas.height() / height;
-
         Canvas {
             canvas,
             ctx,
-            scaled_width,
-            scaled_height,
             width,
             height,
         }
@@ -104,12 +99,8 @@ impl Canvas {
 
     pub fn clear_all(&self) {
         self.ctx.set_fill_style_color("#fae7c9");
-        self.ctx.fill_rect(
-            0.0,
-            0.0,
-            f64::from(self.width * self.scaled_width),
-            f64::from(self.height * self.scaled_height),
-        );
+        self.ctx
+            .fill_rect(0.0, 0.0, f64::from(self.width), f64::from(self.height));
     }
 
     pub fn draw_graphic(
@@ -120,10 +111,8 @@ impl Canvas {
     ) {
         self.ctx.set_global_alpha(alpha);
 
-        let x = (location.x as f64 * self.scaled_width as f64)
-            + (self.scaled_width as f64 * graphic_renderable.offset_x);
-        let y = (location.y as f64 * self.scaled_height as f64)
-            + (self.scaled_height as f64 * graphic_renderable.offset_y);
+        let x = location.x as f64 + graphic_renderable.offset_x;
+        let y = location.y as f64 + graphic_renderable.offset_y;
 
         self.ctx.set_fill_style_color(&graphic_renderable.color);
         let img_element: stdweb::web::html_element::ImageElement = stdweb::web::document()
@@ -132,13 +121,7 @@ impl Canvas {
             .try_into()
             .unwrap();
         self.ctx
-            .draw_image_d(
-                img_element,
-                x,
-                y,
-                f64::from(self.scaled_width),
-                f64::from(self.scaled_height),
-            )
+            .draw_image_d(img_element, x, y, STANDARD_TILE, STANDARD_TILE)
             .expect("draw_image_d failed");
 
         self.ctx.set_global_alpha(1f64);
@@ -147,13 +130,16 @@ impl Canvas {
     pub fn draw_text(&self, alpha: f64, location: &Location, text_renderable: &TextRenderable) {
         self.ctx.set_global_alpha(alpha);
 
-        let x = (location.x as f64 * self.scaled_width as f64)
-            + (self.scaled_width as f64 * text_renderable.offset_x);
-        let y = (location.y as f64 * self.scaled_height as f64)
-            + (self.scaled_height as f64 * (1f64 + text_renderable.offset_y));
+        let x = location.x as f64 + text_renderable.offset_x;
+        let y = location.y as f64 + text_renderable.offset_y;
+
+        let mut font = "40px helvetica";
+        if text_renderable.text.is_ascii() {
+            font = "20px helvetica";
+        }
 
         self.ctx.set_fill_style_color("black");
-        self.ctx.set_font("20px helvetica");
+        self.ctx.set_font(font);
         self.ctx
             .fill_text(&text_renderable.text, x, y, Some(2000f64));
 
@@ -166,17 +152,15 @@ impl Canvas {
         location: &Location,
         chat_renderable: &ChatRenderable,
     ) {
-        let x = (location.x as f64 * self.scaled_width as f64)
-            + (self.scaled_width as f64 * chat_renderable.offset_x);
-        let y = (location.y as f64 * self.scaled_height as f64)
-            + (self.scaled_height as f64 * (1f64 + chat_renderable.offset_y));
+        let x = location.x as f64 + chat_renderable.offset_x;
+        let y = location.y as f64 + chat_renderable.offset_y;
         let w = self
             .ctx
             .measure_text(&chat_renderable.text)
             .expect("Canvas measure_text failed")
             .get_width()
             + 14_f64;
-        let h = self.scaled_width as f64 * 1_f64;
+        let h = 45_f64;
         let r = x + w;
         let b = y + h;
         let radius = 10_f64;

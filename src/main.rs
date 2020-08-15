@@ -6,16 +6,17 @@ use specs::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
 use stdweb::traits::*;
-use stdweb::web::{event::KeyDownEvent, IEventTarget};
+use stdweb::web::{event::ClickEvent, event::KeyDownEvent, IEventTarget};
 
 mod canvas;
+pub use canvas::STANDARD_TILE;
 use canvas::{Canvas, DrawSystem};
 mod components;
 pub use components::*;
 mod entities;
 pub use entities::*;
 mod map;
-pub use map::{generate_map, Map};
+pub use map::{closest_valid_map_location, generate_map, Map};
 mod movement;
 use movement::MovementSystem;
 mod disappearing;
@@ -23,40 +24,62 @@ use disappearing::DisappearingSystem;
 mod carry;
 use carry::CarrySystem;
 
-pub fn handle_input(ecs: &mut World, input: &str, for_name: &str) {
-    let mut new_poop_location: Option<Location> = None;
+pub fn handle_input(ecs: &mut World, input: &str, for_entity: Entity) {
+    let new_x;
+    let new_y;
     {
-        let entities = ecs.entities();
         let locations = ecs.read_storage::<Location>();
-        let player_infos = ecs.read_storage::<PlayerInfo>();
-        let mut move_tos = ecs.write_storage::<WantsToMoveTo>();
-        for (entity, location, player_info) in (&entities, &locations, &player_infos).join() {
-            if player_info.name != for_name {
-                continue;
-            }
-            let mut new_x = location.x;
-            let mut new_y = location.y;
-
-            match input {
-                "ArrowLeft" => new_x -= 1,
-                "ArrowRight" => new_x += 1,
-                "ArrowDown" => new_y += 1,
-                "ArrowUp" => new_y -= 1,
-                "p" => {
-                    new_poop_location = Some(Location {
-                        x: location.x,
-                        y: location.y,
-                    });
-                }
-                _ => return,
-            };
-            move_tos
-                .insert(entity, WantsToMoveTo { x: new_x, y: new_y })
-                .expect("Unable to insert WantsToMoveTo");
-        }
+        let location = locations
+            .get(for_entity)
+            .expect("Cannot find location for player");
+        new_x = location.x;
+        new_y = location.y;
     }
-    if new_poop_location.is_some() {
-        create_poop(ecs, new_poop_location.unwrap());
+
+    match input {
+        // "ArrowLeft" => new_x -= 1,
+        // "ArrowRight" => new_x += 1,
+        // "ArrowDown" => new_y += 1,
+        // "ArrowUp" => new_y -= 1,
+        "p" => {
+            create_poop(ecs, Location { x: new_x, y: new_y });
+            return;
+        }
+        _ => return,
+    };
+
+    // Insert the move intention component
+    // let mut move_tos = ecs.write_storage::<WantsToMoveTo>();
+    // move_tos
+    //     .insert(for_entity, WantsToMoveTo { x: new_x, y: new_y })
+    //     .expect("Unable to insert WantsToMoveTo");
+}
+
+pub fn handle_click(ecs: &mut World, x: i32, y: i32, for_entity: Entity) {
+    let rect = ecs
+        .fetch::<Canvas>()
+        .ctx
+        .get_canvas()
+        .get_bounding_client_rect();
+    let map = ecs.fetch::<Map>();
+    let maybe_valid_location = closest_valid_map_location(
+        &map,
+        Location {
+            x: x - rect.get_left() as i32,
+            y: y - rect.get_left() as i32,
+        },
+    );
+    if let Some(valid_location) = maybe_valid_location {
+        let mut move_tos = ecs.write_storage::<WantsToMoveTo>();
+        move_tos
+            .insert(
+                for_entity,
+                WantsToMoveTo {
+                    x: valid_location.x,
+                    y: valid_location.y,
+                },
+            )
+            .expect("Unable to insert WantsToMoveTo");
     }
 }
 
@@ -89,12 +112,15 @@ impl State {
     fn read_from_local_storage(&mut self) {
         // Check for chat_input
         let chat_input = stdweb::web::window().local_storage().get("chat_input");
-        if chat_input.is_some() {
+        if let Some(chat_msg) = chat_input {
+            if chat_msg.len() == 0 {
+                return; // Don't render a bubble if nothing was said
+            }
             let maybe_entity = get_entity_for_name(&self.ecs, String::from("Ferris"));
             if maybe_entity.is_some() {
                 create_chat_bubble(
                     &mut self.ecs,
-                    censor_chat_input(&chat_input.unwrap()),
+                    censor_chat_input(&chat_msg),
                     maybe_entity.unwrap(),
                 );
             }
@@ -114,8 +140,8 @@ impl State {
 fn main() {
     stdweb::initialize();
 
-    let width: i32 = 20;
-    let height: i32 = 20;
+    let width: i32 = 800;
+    let height: i32 = 800;
 
     let gs = Rc::new(RefCell::new(State { ecs: World::new() }));
     gs.borrow_mut().ecs.register::<Location>();
@@ -129,9 +155,9 @@ fn main() {
     gs.borrow_mut().ecs.register::<CarriedBy>();
 
     // Create our crabs
-    create_crab(&mut gs.borrow_mut().ecs, "Ferris", "red", 9, 9);
-    create_crab(&mut gs.borrow_mut().ecs, "Geoff", "blue", 1, 1);
-    create_crab(&mut gs.borrow_mut().ecs, "Tammy", "purple", 17, 15);
+    create_crab(&mut gs.borrow_mut().ecs, "Ferris", "red", 400, 400);
+    create_crab(&mut gs.borrow_mut().ecs, "Geoff", "blue", 100, 100);
+    create_crab(&mut gs.borrow_mut().ecs, "Tammy", "purple", 600, 500);
 
     // Canvas is where we do all our rendering
     let canvas = Canvas::new("#canvas", width as u32, height as u32);
@@ -146,7 +172,24 @@ fn main() {
     stdweb::web::document().add_event_listener({
         let gs = gs.clone();
         move |event: KeyDownEvent| {
-            handle_input(&mut gs.borrow_mut().ecs, event.key().as_ref(), "Ferris");
+            let for_entity = get_entity_for_name(&gs.borrow().ecs, String::from("Ferris"))
+                .expect("Cannot find entity for event");
+            handle_input(&mut gs.borrow_mut().ecs, event.key().as_ref(), for_entity);
+        }
+    });
+
+    // Link keystrokes to player input via stdweb
+    stdweb::web::document().add_event_listener({
+        let gs = gs.clone();
+        move |event: ClickEvent| {
+            let for_entity = get_entity_for_name(&gs.borrow().ecs, String::from("Ferris"))
+                .expect("Cannot find entity for event");
+            handle_click(
+                &mut gs.borrow_mut().ecs,
+                event.client_x(),
+                event.client_y(),
+                for_entity,
+            );
         }
     });
 

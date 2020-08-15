@@ -20,13 +20,13 @@ pub fn create_crab(ecs: &mut World, name: &str, color: &str, x: i32, y: i32) {
         .with(Renderable { render_order: 1 })
         .with(TextRenderable {
             text: String::from(name),
-            offset_x: 1f64,
-            offset_y: 1.5f64,
+            offset_x: -STANDARD_TILE / 5_f64,
+            offset_y: STANDARD_TILE / 2_f64,
         })
         .with(GraphicRenderable {
             color: String::from(color),
-            offset_x: 1f64,
-            offset_y: 1f64,
+            offset_x: -STANDARD_TILE / 2_f64,
+            offset_y: -STANDARD_TILE / 2_f64,
         })
         .build();
 }
@@ -53,8 +53,8 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
         .with(Renderable { render_order: 0 })
         .with(ChatRenderable {
             text: text,
-            offset_x: 1f64,
-            offset_y: -1.5f64,
+            offset_x: -STANDARD_TILE / 2.5_f64,
+            offset_y: -STANDARD_TILE * 0.75,
         })
         .with(Disappearing {
             total_ticks: 100,
@@ -69,8 +69,8 @@ pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
         .with(Renderable { render_order: 1 })
         .with(TextRenderable {
             text: String::from("🔪"),
-            offset_x: 1.75f64,
-            offset_y: -1.25f64,
+            offset_x: STANDARD_TILE / 3_f64,
+            offset_y: -STANDARD_TILE / 2_f64,
         })
         .build();
 }
@@ -81,8 +81,8 @@ pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
         .with(Renderable { render_order: 4 })
         .with(TextRenderable {
             text: String::from("🌴"),
-            offset_x: 1.75f64,
-            offset_y: -1.25f64,
+            offset_x: 0_f64,
+            offset_y: 0_f64,
         })
         .build();
 }
@@ -93,8 +93,8 @@ pub fn create_poop(ecs: &mut World, location: Location) {
         .with(Renderable { render_order: 3 })
         .with(TextRenderable {
             text: String::from("💩"),
-            offset_x: 1.25f64,
-            offset_y: 1.25f64,
+            offset_x: -8_f64,
+            offset_y: STANDARD_TILE / 3_f64,
         })
         .with(Disappearing {
             total_ticks: 100,
