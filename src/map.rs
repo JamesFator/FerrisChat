@@ -1,4 +1,4 @@
-use super::{Location, Renderable, TextRenderable};
+use super::{create_knife, create_tree};
 use oorandom::Rand32;
 use specs::prelude::*;
 
@@ -8,36 +8,6 @@ const MAXKNIVES: i32 = 1;
 pub struct Map {
     pub width: i32,
     pub height: i32,
-}
-
-fn create_knife(ecs: &mut World, x: i32, y: i32) {
-    ecs.create_entity()
-        .with(Location { x, y })
-        .with(Renderable {
-            text_renderable: Some(TextRenderable {
-                text: String::from("🔪"),
-                offset_x: 1.75f64,
-                offset_y: -1.25f64,
-            }),
-            graphic_renderable: None,
-            render_order: 1,
-        })
-        .build();
-}
-
-fn create_tree(ecs: &mut World, x: i32, y: i32) {
-    ecs.create_entity()
-        .with(Location { x, y })
-        .with(Renderable {
-            text_renderable: Some(TextRenderable {
-                text: String::from("🌴"),
-                offset_x: 1.25f64,
-                offset_y: -1.25f64,
-            }),
-            graphic_renderable: None,
-            render_order: 5,
-        })
-        .build();
 }
 
 pub fn generate_map(ecs: &mut World, map: &Map) {

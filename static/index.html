@@ -10,9 +10,29 @@
         <canvas id="canvas" width="800" height="800"></canvas>
         <div>
             <input id="chat_input" type="text">
-            <button onclick="window.localStorage.setItem('chat_input', document.getElementById('chat_input').value);">Chat!</button>
+            <button id="chat_button" onclick="chat_clicked()">Chat!</button>
         </div>
         <script src="ferris_chat.js"></script>
+        <script>
+            // When a chat message is entered, insert the value into local storage
+            // for our 'read_from_local_storage' Rust function to read at a later
+            // point in time.
+            function chat_clicked() {
+                let msg = document.getElementById('chat_input').value;
+                window.localStorage.setItem('chat_input', msg);
+
+                // Clear the input
+                document.getElementById('chat_input').value = "";
+            }
+
+            // Snippet which allows us to click the chat_button element when
+            // the return key is pressed then released.
+            document.querySelector("#chat_input").addEventListener("keyup", event => {
+                if (event.key !== "Enter") return;
+                document.querySelector("#chat_button").click();
+                event.preventDefault();
+            });
+        </script>
         
     </body>
 </html>
