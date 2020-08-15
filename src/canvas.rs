@@ -126,12 +126,20 @@ impl Canvas {
             + (self.scaled_height as f64 * graphic_renderable.offset_y);
 
         self.ctx.set_fill_style_color(&graphic_renderable.color);
-        self.ctx.fill_rect(
-            x,
-            y,
-            f64::from(self.scaled_width),
-            f64::from(self.scaled_height),
-        );
+        let img_element: stdweb::web::html_element::ImageElement = stdweb::web::document()
+            .get_element_by_id("rustacean")
+            .unwrap()
+            .try_into()
+            .unwrap();
+        self.ctx
+            .draw_image_d(
+                img_element,
+                x,
+                y,
+                f64::from(self.scaled_width),
+                f64::from(self.scaled_height),
+            )
+            .expect("draw_image_d failed");
 
         self.ctx.set_global_alpha(1f64);
     }

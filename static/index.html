@@ -7,22 +7,31 @@
     </head>
 
     <body style=background-color:#67bde0>
-        <canvas id="canvas" width="800" height="800"></canvas>
-        <div>
-            <input id="chat_input" type="text">
-            <button id="chat_button" onclick="chat_clicked()">Chat!</button>
+        <div style="width: 800px;">
+            <canvas id="canvas" width="800" height="800"></canvas>
+            <div>
+                <input id="chat_input" type="text" style="font-size: 25px; vertical-align: middle;">
+                <button id="chat_button" onclick="chat_clicked()" style="height: 35px; vertical-align: middle;">
+                    Chat!
+                </button>
+                <audio autoplay loop controls style="height: 30px; float: right;">
+                    <source src="crab_rave.mp3" type="audio/mp3">
+                </audio>
+            </div>
         </div>
+
+        <img id="rustacean" width="1" height="1" src="rustacean.png">
         <script src="ferris_chat.js"></script>
         <script>
             // When a chat message is entered, insert the value into local storage
-            // for our 'read_from_local_storage' Rust function to read at a later
+            // for our "read_from_local_storage" Rust function to read at a later
             // point in time.
             function chat_clicked() {
-                let msg = document.getElementById('chat_input').value;
-                window.localStorage.setItem('chat_input', msg);
+                let msg = document.getElementById("chat_input").value;
+                window.localStorage.setItem("chat_input", msg);
 
                 // Clear the input
-                document.getElementById('chat_input').value = "";
+                document.getElementById("chat_input").value = "";
             }
 
             // Snippet which allows us to click the chat_button element when
