@@ -31,7 +31,7 @@ pub fn create_crab(ecs: &mut World, name: &str, color: &str, x: i32, y: i32) {
         .build();
 }
 
-pub fn create_chat_bubble(ecs: &mut World, text: &str, for_entity: Entity) {
+pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
     // Delete any other chat bubbles this player has had up until now
     {
         let entities = ecs.entities();
@@ -52,7 +52,7 @@ pub fn create_chat_bubble(ecs: &mut World, text: &str, for_entity: Entity) {
         .with(CarriedBy { owner: for_entity })
         .with(Renderable { render_order: 0 })
         .with(ChatRenderable {
-            text: String::from(text),
+            text: text,
             offset_x: 1f64,
             offset_y: -1.5f64,
         })

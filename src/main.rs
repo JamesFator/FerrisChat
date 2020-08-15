@@ -1,6 +1,7 @@
 extern crate serde;
 extern crate stdweb;
 
+use censor::*;
 use specs::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -59,6 +60,12 @@ pub fn handle_input(ecs: &mut World, input: &str, for_name: &str) {
     }
 }
 
+/// Censor any profanity considering we're about to render the input
+pub fn censor_chat_input(chat_input: &str) -> String {
+    let censor = Censor::Standard + "cunk";
+    censor.censor(chat_input)
+}
+
 pub struct State {
     pub ecs: World,
 }
@@ -85,7 +92,11 @@ impl State {
         if chat_input.is_some() {
             let maybe_entity = get_entity_for_name(&self.ecs, String::from("Ferris"));
             if maybe_entity.is_some() {
-                create_chat_bubble(&mut self.ecs, &chat_input.unwrap(), maybe_entity.unwrap());
+                create_chat_bubble(
+                    &mut self.ecs,
+                    censor_chat_input(&chat_input.unwrap()),
+                    maybe_entity.unwrap(),
+                );
             }
         }
         stdweb::web::window().local_storage().remove("chat_input");
@@ -122,13 +133,16 @@ fn main() {
     create_crab(&mut gs.borrow_mut().ecs, "Geoff", "blue", 1, 1);
     create_crab(&mut gs.borrow_mut().ecs, "Tammy", "purple", 17, 15);
 
+    // Canvas is where we do all our rendering
     let canvas = Canvas::new("#canvas", width as u32, height as u32);
     gs.borrow_mut().ecs.insert(canvas);
 
+    // Map contains the map state
     let map = Map { width, height };
     generate_map(&mut gs.borrow_mut().ecs, &map);
     gs.borrow_mut().ecs.insert(map);
 
+    // Link keystrokes to player input via stdweb
     stdweb::web::document().add_event_listener({
         let gs = gs.clone();
         move |event: KeyDownEvent| {
@@ -136,6 +150,7 @@ fn main() {
         }
     });
 
+    // Recurive main loop because that's the only way I've found to do it in stdweb
     fn game_loop(gs: Rc<RefCell<State>>, time: u32) {
         let gs = gs.clone();
         stdweb::web::set_timeout(
