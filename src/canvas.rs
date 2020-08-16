@@ -42,7 +42,7 @@ impl<'a> System<'a> for DrawSystem {
             let alpha = match disappearings.get(*entity) {
                 None => 1f64,
                 Some(disappearing) => {
-                    disappearing.ticks_left as f64 / disappearing.total_ticks as f64
+                    (disappearing.ticks_left as f64 / disappearing.total_ticks as f64).min(1.0)
                 }
             };
             match text_renders.get(*entity) {
@@ -148,9 +148,8 @@ impl Canvas {
         let y = (location.y as f64 * self.scaled_height)
             + (self.scaled_height * graphic_renderable.offset_y);
 
-        self.ctx.set_fill_style_color(&graphic_renderable.color);
         let img_element: stdweb::web::html_element::ImageElement = stdweb::web::document()
-            .get_element_by_id("rustacean")
+            .get_element_by_id(&graphic_renderable.image_name)
             .unwrap()
             .try_into()
             .unwrap();

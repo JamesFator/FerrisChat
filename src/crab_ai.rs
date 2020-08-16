@@ -16,8 +16,8 @@ impl<'a> System<'a> for CrabAISystem {
         let (entities, map, mut crab_ais, locations, mut move_tos) = data;
 
         for (entity, mut crab_ai, location) in (&entities, &mut crab_ais, &locations).join() {
-            if crab_ai.ticks_since_move == crab_ai.total_ticks_per_move {
-                crab_ai.ticks_since_move = 0;
+            if crab_ai.ticks == crab_ai.tick_interval {
+                crab_ai.ticks = 0;
                 crab_ai.crab_state = match crab_ai.crab_state {
                     CrabAIState::WalkingRight => CrabAIState::SleepingRight,
                     CrabAIState::SleepingRight => CrabAIState::WalkingLeft,
@@ -25,24 +25,24 @@ impl<'a> System<'a> for CrabAISystem {
                     CrabAIState::SleepingLeft => CrabAIState::WalkingRight,
                 };
             } else {
-                crab_ai.ticks_since_move += 1;
+                crab_ai.ticks += 1;
             }
 
             let desired_location = match crab_ai.crab_state {
                 CrabAIState::WalkingRight => WantsToMoveTo {
                     x: location.x + 1,
                     y: location.y,
-                    speed: crab_ai.speed,
+                    speed: crab_ai.walk_speed,
                 },
                 CrabAIState::WalkingLeft => WantsToMoveTo {
                     x: location.x - 1,
                     y: location.y,
-                    speed: crab_ai.speed,
+                    speed: crab_ai.walk_speed,
                 },
                 _ => WantsToMoveTo {
                     x: location.x,
                     y: location.y,
-                    speed: crab_ai.speed,
+                    speed: crab_ai.walk_speed,
                 },
             };
             if !valid_walking_location(&map, &desired_location) {

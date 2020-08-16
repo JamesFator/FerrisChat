@@ -40,9 +40,16 @@ pub struct ChatRenderable {
 
 #[derive(Component)]
 pub struct GraphicRenderable {
-    pub color: String,
+    pub image_name: String,
     pub offset_x: f64,
     pub offset_y: f64,
+}
+
+#[derive(Component)]
+pub struct GraphicAnimatable {
+    pub image_names: Vec<String>,
+    pub tick_interval: i16,
+    pub ticks: i16,
 }
 
 #[derive(Component)]
@@ -73,8 +80,8 @@ pub enum CrabAIState {
 #[derive(Component)]
 pub struct CrabAI {
     pub crab_state: CrabAIState,
-    pub total_ticks_per_move: i16,
-    pub ticks_since_move: i16,
-    pub speed: i16,
+    pub tick_interval: i16,
+    pub ticks: i16,
+    pub walk_speed: i16,
     pub sleep_duration: i16,
 }

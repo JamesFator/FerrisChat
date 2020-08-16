@@ -16,15 +16,15 @@ pub use components::*;
 mod entities;
 pub use entities::*;
 mod map;
-pub use map::{valid_walking_location, Map, TileType};
+pub use map::{get_random_location_of_tile, valid_walking_location, Map, TileType};
 mod movement;
 use movement::MovementSystem;
-mod disappearing;
-use disappearing::DisappearingSystem;
 mod carry;
 use carry::CarrySystem;
 mod crab_ai;
 use crab_ai::CrabAISystem;
+mod animation;
+use animation::{AnimationSystem, DisappearingSystem};
 
 pub fn handle_input(ecs: &mut World, input: &str, for_entity: Entity) {
     let new_x;
@@ -58,7 +58,7 @@ pub fn handle_click(ecs: &mut World, x: i32, y: i32, for_entity: Entity) {
     let desired_location = WantsToMoveTo {
         x: ((x as f64 - rect.get_left() as f64) / canvas.scaled_width) as i32,
         y: ((y as f64 - rect.get_left() as f64) / canvas.scaled_height) as i32,
-        speed: 3,
+        speed: 2,
     };
     if valid_walking_location(&map, &desired_location) {
         let mut move_tos = ecs.write_storage::<WantsToMoveTo>();
@@ -123,6 +123,8 @@ impl State {
         carry_system.run_now(&self.ecs);
         let mut crab_ai_system = CrabAISystem {};
         crab_ai_system.run_now(&self.ecs);
+        let mut animation_system = AnimationSystem {};
+        animation_system.run_now(&self.ecs);
 
         // Draw system should be last
         let mut draw_system = DrawSystem {};
@@ -157,6 +159,7 @@ fn main() {
     gs.borrow_mut().ecs.register::<TextRenderable>();
     gs.borrow_mut().ecs.register::<ChatRenderable>();
     gs.borrow_mut().ecs.register::<GraphicRenderable>();
+    gs.borrow_mut().ecs.register::<GraphicAnimatable>();
     gs.borrow_mut().ecs.register::<WantsToMoveTo>();
     gs.borrow_mut().ecs.register::<Disappearing>();
     gs.borrow_mut().ecs.register::<CarriedBy>();
@@ -170,41 +173,22 @@ fn main() {
     let mut rng = Rand32::new(Date::new().get_seconds() as u64);
 
     // Map contains the map state
-    let map = Map::new(&mut gs.borrow_mut().ecs, &mut rng, width, height);
-    gs.borrow_mut().ecs.insert(map);
-    gs.borrow_mut().ecs.insert(rng);
+    let map = Map::new(&mut rng, width, height);
+
+    // Create some initial entities to our map
+    fill_map(&mut gs.borrow_mut().ecs, &map, &mut rng);
 
     // Create game helper entities
     create_fps_tracker(&mut gs.borrow_mut().ecs);
 
     // Create our crabs
-    create_crab(
-        &mut gs.borrow_mut().ecs,
-        &mut rng,
-        "Ferris",
-        "red",
-        50,
-        50,
-        false,
-    );
-    create_crab(
-        &mut gs.borrow_mut().ecs,
-        &mut rng,
-        "Geoff",
-        "blue",
-        20,
-        15,
-        true,
-    );
-    create_crab(
-        &mut gs.borrow_mut().ecs,
-        &mut rng,
-        "Tammy",
-        "purple",
-        75,
-        80,
-        true,
-    );
+    spawn_crab(&mut gs.borrow_mut().ecs, &map, &mut rng, "Ferris", false);
+    spawn_crab(&mut gs.borrow_mut().ecs, &map, &mut rng, "Chris", true);
+    spawn_crab(&mut gs.borrow_mut().ecs, &map, &mut rng, "Tammy", true);
+
+    // Insert resources into ECS
+    gs.borrow_mut().ecs.insert(map);
+    gs.borrow_mut().ecs.insert(rng);
 
     // Link keystrokes to player input via stdweb
     stdweb::web::document().add_event_listener({

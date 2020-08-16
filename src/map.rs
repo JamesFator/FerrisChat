@@ -1,10 +1,6 @@
-use super::{create_knife, create_tree, WantsToMoveTo};
+use super::{Location, WantsToMoveTo};
 use oorandom::Rand32;
-use specs::prelude::*;
 use std::ops::Range;
-
-const MAXTREES: i32 = 20;
-const MAXKNIVES: i32 = 1;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
@@ -33,7 +29,7 @@ impl Map {
     /// One which defines the sand, and two which define the grass at different
     /// densities. I hate this, but it's my first time doing something like this
     /// so I'm giving up for now.
-    pub fn new(ecs: &mut World, mut rng: &mut Rand32, width: i32, height: i32) -> Map {
+    pub fn new(mut rng: &mut Rand32, width: i32, height: i32) -> Map {
         // Pre-build a vector of points to iterate over for code cleanlyness
         // later down the line. I don't know if this is a good idea or bad idea.
         let mut iter = Vec::new();
@@ -102,9 +98,6 @@ impl Map {
             }
         }
 
-        // Add some initial entities to our map
-        fill_map(ecs, &map, &mut rng);
-
         map
     }
 }
@@ -119,6 +112,38 @@ pub fn valid_walking_location(map: &Map, wants_to_move: &WantsToMoveTo) -> bool 
         return false; // Cannot travel to water
     }
     true
+}
+
+/// Return a location which is not TileType::Water
+pub fn get_random_location_of_tile(map: &Map, rng: &mut Rand32, tile_type: TileType) -> Location {
+    let mut x;
+    let mut y;
+    // Right side of island is where we spawn, so limit x range search for Sand
+    let x_range = match tile_type {
+        TileType::Sand => Range {
+            start: (map.width as f64 * 0.90) as u32,
+            end: map.width as u32 - 1,
+        },
+        _ => Range {
+            start: 1 as u32,
+            end: map.width as u32 - 1,
+        },
+    };
+    let y_range = Range {
+        start: 1 as u32,
+        end: map.width as u32 - 1,
+    };
+    loop {
+        x = rng.rand_range(x_range.clone());
+        y = rng.rand_range(y_range.clone());
+        if map.tiles[x as usize][y as usize] == tile_type {
+            break;
+        }
+    }
+    Location {
+        x: x as i32,
+        y: y as i32,
+    }
 }
 
 /// Modify the tiles structure to create something that looks like an island
@@ -173,37 +198,5 @@ fn cellular_automata_map(map: &mut Map, rng: &mut Rand32, iterations: i32) {
             }
         }
         map.tiles = new_tiles.clone();
-    }
-}
-
-/// Fill the map with entities
-fn fill_map(ecs: &mut World, map: &Map, rng: &mut Rand32) {
-    let width = map.width as u32;
-    let height = map.height as u32;
-    for _ in 0..MAXTREES {
-        let x = rng.rand_range(Range {
-            start: 10,
-            end: width - 11,
-        }) as i32;
-        let y = rng.rand_range(Range {
-            start: 10,
-            end: height - 11,
-        }) as i32;
-        if map.tiles[x as usize][y as usize] != TileType::Water {
-            create_tree(ecs, x, y);
-        }
-    }
-    for _ in 0..MAXKNIVES {
-        let x = rng.rand_range(Range {
-            start: 10,
-            end: width - 11,
-        }) as i32;
-        let y = rng.rand_range(Range {
-            start: 10,
-            end: height - 11,
-        }) as i32;
-        if map.tiles[x as usize][y as usize] != TileType::Water {
-            create_knife(ecs, x, y);
-        }
     }
 }
