@@ -49,6 +49,7 @@ pub struct GraphicRenderable {
 pub struct WantsToMoveTo {
     pub x: i32,
     pub y: i32,
+    pub speed: i16,
 }
 
 #[derive(Component)]
@@ -60,4 +61,20 @@ pub struct Disappearing {
 #[derive(Component)]
 pub struct CarriedBy {
     pub owner: Entity,
+}
+
+pub enum CrabAIState {
+    WalkingRight,
+    SleepingRight,
+    WalkingLeft,
+    SleepingLeft,
+}
+
+#[derive(Component)]
+pub struct CrabAI {
+    pub crab_state: CrabAIState,
+    pub total_ticks_per_move: i16,
+    pub ticks_since_move: i16,
+    pub speed: i16,
+    pub sleep_duration: i16,
 }

@@ -1,4 +1,4 @@
-use super::{create_knife, create_tree, Location};
+use super::{create_knife, create_tree, WantsToMoveTo};
 use oorandom::Rand32;
 use specs::prelude::*;
 use std::ops::Range;
@@ -33,7 +33,7 @@ impl Map {
     /// One which defines the sand, and two which define the grass at different
     /// densities. I hate this, but it's my first time doing something like this
     /// so I'm giving up for now.
-    pub fn new(ecs: &mut World, width: i32, height: i32) -> Map {
+    pub fn new(ecs: &mut World, mut rng: &mut Rand32, width: i32, height: i32) -> Map {
         // Pre-build a vector of points to iterate over for code cleanlyness
         // later down the line. I don't know if this is a good idea or bad idea.
         let mut iter = Vec::new();
@@ -64,9 +64,6 @@ impl Map {
             tiles: vec![vec![TileType::Water; height as usize]; width as usize],
             iter: iter.clone(),
         };
-
-        // Pull the random generator out of the ECS
-        let mut rng = Rand32::new(*ecs.fetch::<u64>());
 
         // Generate the island
         cellular_automata_map(&mut map, &mut rng, 9);
@@ -112,20 +109,16 @@ impl Map {
     }
 }
 
-/// Given x+y, return location closest to desired where an entity can travel.
-/// None if user clicked off canvas.
-pub fn closest_valid_map_location(map: &Map, location: Location) -> Option<Location> {
-    if location.x < 0 || location.x > map.width - 1 {
-        return None;
-    } else if location.y < 0 || location.y > map.height - 1 {
-        return None;
-    } else if map.tiles[location.x as usize][location.y as usize] == TileType::Water {
-        return None; // Cannot travel to water
+/// Given x+y, return true if an entity can walk there. False if it's water or outside map
+pub fn valid_walking_location(map: &Map, wants_to_move: &WantsToMoveTo) -> bool {
+    if wants_to_move.x < 0 || wants_to_move.x > map.width - 1 {
+        return false;
+    } else if wants_to_move.y < 0 || wants_to_move.y > map.height - 1 {
+        return false;
+    } else if map.tiles[wants_to_move.x as usize][wants_to_move.y as usize] == TileType::Water {
+        return false; // Cannot travel to water
     }
-    Some(Location {
-        x: location.x,
-        y: location.y,
-    })
+    true
 }
 
 /// Modify the tiles structure to create something that looks like an island

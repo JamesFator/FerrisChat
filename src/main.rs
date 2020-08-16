@@ -2,6 +2,7 @@ extern crate serde;
 extern crate stdweb;
 
 use censor::*;
+use oorandom::Rand32;
 use specs::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -15,13 +16,15 @@ pub use components::*;
 mod entities;
 pub use entities::*;
 mod map;
-pub use map::{closest_valid_map_location, Map, TileType};
+pub use map::{valid_walking_location, Map, TileType};
 mod movement;
 use movement::MovementSystem;
 mod disappearing;
 use disappearing::DisappearingSystem;
 mod carry;
 use carry::CarrySystem;
+mod crab_ai;
+use crab_ai::CrabAISystem;
 
 pub fn handle_input(ecs: &mut World, input: &str, for_entity: Entity) {
     let new_x;
@@ -52,23 +55,15 @@ pub fn handle_click(ecs: &mut World, x: i32, y: i32, for_entity: Entity) {
         .get_bounding_client_rect();
     let canvas = ecs.fetch::<Canvas>();
     let map = ecs.fetch::<Map>();
-    let maybe_valid_location = closest_valid_map_location(
-        &map,
-        Location {
-            x: ((x as f64 - rect.get_left() as f64) / canvas.scaled_width) as i32,
-            y: ((y as f64 - rect.get_left() as f64) / canvas.scaled_height) as i32,
-        },
-    );
-    if let Some(valid_location) = maybe_valid_location {
+    let desired_location = WantsToMoveTo {
+        x: ((x as f64 - rect.get_left() as f64) / canvas.scaled_width) as i32,
+        y: ((y as f64 - rect.get_left() as f64) / canvas.scaled_height) as i32,
+        speed: 3,
+    };
+    if valid_walking_location(&map, &desired_location) {
         let mut move_tos = ecs.write_storage::<WantsToMoveTo>();
         move_tos
-            .insert(
-                for_entity,
-                WantsToMoveTo {
-                    x: valid_location.x,
-                    y: valid_location.y,
-                },
-            )
+            .insert(for_entity, desired_location)
             .expect("Unable to insert WantsToMoveTo");
     }
 }
@@ -126,6 +121,8 @@ impl State {
         disappearing_system.run_now(&self.ecs);
         let mut carry_system = CarrySystem {};
         carry_system.run_now(&self.ecs);
+        let mut crab_ai_system = CrabAISystem {};
+        crab_ai_system.run_now(&self.ecs);
 
         // Draw system should be last
         let mut draw_system = DrawSystem {};
@@ -163,25 +160,51 @@ fn main() {
     gs.borrow_mut().ecs.register::<WantsToMoveTo>();
     gs.borrow_mut().ecs.register::<Disappearing>();
     gs.borrow_mut().ecs.register::<CarriedBy>();
-
-    // Create game helper entities
-    create_fps_tracker(&mut gs.borrow_mut().ecs);
-
-    // Create our crabs
-    create_crab(&mut gs.borrow_mut().ecs, "Ferris", "red", 50, 50);
-    create_crab(&mut gs.borrow_mut().ecs, "Geoff", "blue", 15, 15);
-    create_crab(&mut gs.borrow_mut().ecs, "Tammy", "purple", 75, 80);
-
-    // Add the seed for our random number generator
-    gs.borrow_mut().ecs.insert(Date::new().get_seconds() as u64);
+    gs.borrow_mut().ecs.register::<CrabAI>();
 
     // Canvas is where we do all our rendering
     let canvas = Canvas::new("#canvas", width as u32, height as u32);
     gs.borrow_mut().ecs.insert(canvas);
 
+    // Psuedo random number generator we'll use
+    let mut rng = Rand32::new(Date::new().get_seconds() as u64);
+
     // Map contains the map state
-    let map = Map::new(&mut gs.borrow_mut().ecs, width, height);
+    let map = Map::new(&mut gs.borrow_mut().ecs, &mut rng, width, height);
     gs.borrow_mut().ecs.insert(map);
+    gs.borrow_mut().ecs.insert(rng);
+
+    // Create game helper entities
+    create_fps_tracker(&mut gs.borrow_mut().ecs);
+
+    // Create our crabs
+    create_crab(
+        &mut gs.borrow_mut().ecs,
+        &mut rng,
+        "Ferris",
+        "red",
+        50,
+        50,
+        false,
+    );
+    create_crab(
+        &mut gs.borrow_mut().ecs,
+        &mut rng,
+        "Geoff",
+        "blue",
+        20,
+        15,
+        true,
+    );
+    create_crab(
+        &mut gs.borrow_mut().ecs,
+        &mut rng,
+        "Tammy",
+        "purple",
+        75,
+        80,
+        true,
+    );
 
     // Link keystrokes to player input via stdweb
     stdweb::web::document().add_event_listener({
