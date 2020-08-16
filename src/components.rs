@@ -1,6 +1,12 @@
 use specs::prelude::*;
 use specs_derive::*;
 
+#[derive(Component)]
+pub struct FPSTracker {
+    pub for_time: u64,
+    pub seen_frames: u16,
+}
+
 #[derive(Component, Clone, Copy)]
 pub struct Location {
     pub x: i32,
@@ -20,6 +26,7 @@ pub struct Renderable {
 #[derive(Component)]
 pub struct TextRenderable {
     pub text: String,
+    pub font_size: f64,
     pub offset_x: f64,
     pub offset_y: f64,
 }

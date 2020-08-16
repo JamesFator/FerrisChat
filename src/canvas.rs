@@ -1,8 +1,4 @@
-use super::{
-    ChatRenderable, Disappearing, GraphicRenderable, Location, Renderable, TextRenderable,
-};
-use specs::prelude::*;
-use stdweb::traits::*;
+use super::*;
 use stdweb::unstable::TryInto;
 use stdweb::web::html_element::CanvasElement;
 use stdweb::web::{document, CanvasRenderingContext2d, FillRule};
@@ -13,6 +9,7 @@ impl<'a> System<'a> for DrawSystem {
     type SystemData = (
         Entities<'a>,
         ReadExpect<'a, Canvas>,
+        ReadExpect<'a, Map>,
         ReadStorage<'a, Location>,
         ReadStorage<'a, Renderable>,
         ReadStorage<'a, TextRenderable>,
@@ -25,6 +22,7 @@ impl<'a> System<'a> for DrawSystem {
         let (
             entities,
             canvas,
+            map,
             locations,
             renderable,
             text_renders,
@@ -34,7 +32,7 @@ impl<'a> System<'a> for DrawSystem {
         ) = data;
 
         // Clear the canvas to draw again
-        canvas.clear_all();
+        canvas.draw_blank_map(&map);
 
         let mut draw_data = (&entities, &locations, &renderable)
             .join()
@@ -69,11 +67,11 @@ impl<'a> System<'a> for DrawSystem {
     }
 }
 
-pub const STANDARD_TILE: f64 = 100_f64;
-
 pub struct Canvas {
     pub canvas: CanvasElement,
     pub ctx: CanvasRenderingContext2d,
+    pub scaled_width: f64,
+    pub scaled_height: f64,
     width: u32,
     height: u32,
 }
@@ -89,18 +87,52 @@ impl Canvas {
 
         let ctx: CanvasRenderingContext2d = canvas.get_context().unwrap();
 
+        let scaled_width = canvas.width() as f64 / width as f64;
+        let scaled_height = canvas.height() as f64 / height as f64;
+
         Canvas {
             canvas,
             ctx,
+            scaled_width,
+            scaled_height,
             width,
             height,
         }
     }
 
-    pub fn clear_all(&self) {
-        self.ctx.set_fill_style_color("#fae7c9");
-        self.ctx
-            .fill_rect(0.0, 0.0, f64::from(self.width), f64::from(self.height));
+    pub fn draw_blank_map(&self, map: &Map) {
+        let water_color = "#67bde0";
+        let sand_color = "#fae7c9";
+        let grass_color = "#56b000";
+        // Fill background with water color
+        self.ctx.set_fill_style_color(water_color);
+        self.ctx.fill_rect(
+            0.0,
+            0.0,
+            self.width as f64 * self.scaled_width,
+            self.height as f64 * self.scaled_height,
+        );
+
+        // Iterate through the tiles, drawing the color for each
+        for p in map.iter.iter() {
+            match map.tiles[p.x][p.y] {
+                TileType::Water => {
+                    self.ctx.set_fill_style_color(water_color);
+                }
+                TileType::Sand => {
+                    self.ctx.set_fill_style_color(sand_color);
+                }
+                TileType::Grass => {
+                    self.ctx.set_fill_style_color(grass_color);
+                }
+            };
+            self.ctx.fill_rect(
+                p.x as f64 * self.scaled_width,
+                p.y as f64 * self.scaled_height,
+                self.scaled_width,
+                self.scaled_height,
+            );
+        }
     }
 
     pub fn draw_graphic(
@@ -111,8 +143,10 @@ impl Canvas {
     ) {
         self.ctx.set_global_alpha(alpha);
 
-        let x = location.x as f64 + graphic_renderable.offset_x;
-        let y = location.y as f64 + graphic_renderable.offset_y;
+        let x = (location.x as f64 * self.scaled_width)
+            + (self.scaled_width * graphic_renderable.offset_x);
+        let y = (location.y as f64 * self.scaled_height)
+            + (self.scaled_height * graphic_renderable.offset_y);
 
         self.ctx.set_fill_style_color(&graphic_renderable.color);
         let img_element: stdweb::web::html_element::ImageElement = stdweb::web::document()
@@ -121,7 +155,13 @@ impl Canvas {
             .try_into()
             .unwrap();
         self.ctx
-            .draw_image_d(img_element, x, y, STANDARD_TILE, STANDARD_TILE)
+            .draw_image_d(
+                img_element,
+                x,
+                y,
+                self.scaled_width * 10_f64,
+                self.scaled_height * 10_f64,
+            )
             .expect("draw_image_d failed");
 
         self.ctx.set_global_alpha(1f64);
@@ -130,16 +170,21 @@ impl Canvas {
     pub fn draw_text(&self, alpha: f64, location: &Location, text_renderable: &TextRenderable) {
         self.ctx.set_global_alpha(alpha);
 
-        let x = location.x as f64 + text_renderable.offset_x;
-        let y = location.y as f64 + text_renderable.offset_y;
+        let text_height = text_renderable.font_size;
+        self.ctx.set_font(&format!("{}px helvetica", text_height));
 
-        let mut font = "40px helvetica";
-        if text_renderable.text.is_ascii() {
-            font = "20px helvetica";
-        }
+        let text_width = self
+            .ctx
+            .measure_text(&text_renderable.text)
+            .expect("Canvas measure_text failed")
+            .get_width();
+
+        let x = (location.x as f64 * self.scaled_width) - (text_width / 2_f64)
+            + (self.scaled_width * text_renderable.offset_x);
+        let y = (location.y as f64 * self.scaled_height) - (text_height / 2_f64)
+            + (self.scaled_height * (1f64 + text_renderable.offset_y));
 
         self.ctx.set_fill_style_color("black");
-        self.ctx.set_font(font);
         self.ctx
             .fill_text(&text_renderable.text, x, y, Some(2000f64));
 
@@ -152,8 +197,11 @@ impl Canvas {
         location: &Location,
         chat_renderable: &ChatRenderable,
     ) {
-        let x = location.x as f64 + chat_renderable.offset_x;
-        let y = location.y as f64 + chat_renderable.offset_y;
+        self.ctx.set_font("20px helvetica");
+        let x =
+            location.x as f64 * self.scaled_width + self.scaled_width * chat_renderable.offset_x;
+        let y = location.y as f64 * self.scaled_height
+            + self.scaled_height * (1f64 + chat_renderable.offset_y);
         let w = self
             .ctx
             .measure_text(&chat_renderable.text)

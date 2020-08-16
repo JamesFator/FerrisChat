@@ -11,6 +11,23 @@ pub fn get_entity_for_name(ecs: &World, name: String) -> Option<Entity> {
     return None;
 }
 
+pub fn create_fps_tracker(ecs: &mut World) {
+    ecs.create_entity()
+        .with(FPSTracker {
+            for_time: 0,
+            seen_frames: 0,
+        })
+        .with(Location { x: 5, y: 5 })
+        .with(Renderable { render_order: 0 })
+        .with(TextRenderable {
+            text: String::from(""),
+            font_size: 20_f64,
+            offset_x: 0_f64,
+            offset_y: 0_f64,
+        })
+        .build();
+}
+
 pub fn create_crab(ecs: &mut World, name: &str, color: &str, x: i32, y: i32) {
     ecs.create_entity()
         .with(Location { x, y })
@@ -20,13 +37,14 @@ pub fn create_crab(ecs: &mut World, name: &str, color: &str, x: i32, y: i32) {
         .with(Renderable { render_order: 1 })
         .with(TextRenderable {
             text: String::from(name),
-            offset_x: -STANDARD_TILE / 5_f64,
-            offset_y: STANDARD_TILE / 2_f64,
+            font_size: 20_f64,
+            offset_x: 0_f64,
+            offset_y: 5_f64,
         })
         .with(GraphicRenderable {
             color: String::from(color),
-            offset_x: -STANDARD_TILE / 2_f64,
-            offset_y: -STANDARD_TILE / 2_f64,
+            offset_x: -5_f64,
+            offset_y: -5_f64,
         })
         .build();
 }
@@ -53,8 +71,8 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
         .with(Renderable { render_order: 0 })
         .with(ChatRenderable {
             text: text,
-            offset_x: -STANDARD_TILE / 2.5_f64,
-            offset_y: -STANDARD_TILE * 0.75,
+            offset_x: -5_f64,
+            offset_y: -10_f64,
         })
         .with(Disappearing {
             total_ticks: 100,
@@ -69,8 +87,9 @@ pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
         .with(Renderable { render_order: 1 })
         .with(TextRenderable {
             text: String::from("🔪"),
-            offset_x: STANDARD_TILE / 3_f64,
-            offset_y: -STANDARD_TILE / 2_f64,
+            font_size: 40_f64,
+            offset_x: 5_f64,
+            offset_y: 0_f64,
         })
         .build();
 }
@@ -81,6 +100,7 @@ pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
         .with(Renderable { render_order: 4 })
         .with(TextRenderable {
             text: String::from("🌴"),
+            font_size: 40_f64,
             offset_x: 0_f64,
             offset_y: 0_f64,
         })
@@ -93,8 +113,9 @@ pub fn create_poop(ecs: &mut World, location: Location) {
         .with(Renderable { render_order: 3 })
         .with(TextRenderable {
             text: String::from("💩"),
-            offset_x: -8_f64,
-            offset_y: STANDARD_TILE / 3_f64,
+            font_size: 20_f64,
+            offset_x: 0_f64,
+            offset_y: 7_f64,
         })
         .with(Disappearing {
             total_ticks: 100,

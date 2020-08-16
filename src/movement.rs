@@ -14,7 +14,7 @@ impl<'a> System<'a> for MovementSystem {
         let (_map, mut locations, move_tos) = data;
 
         for (mut location, move_to) in (&mut locations, &move_tos).join() {
-            let speed: i32 = 10;
+            let speed: i32 = 3;
             let dist_x = move_to.x - location.x;
             let dist_y = move_to.y - location.y;
             let mut new_x = location.x;
