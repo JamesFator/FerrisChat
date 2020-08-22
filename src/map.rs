@@ -21,9 +21,6 @@ pub struct Map {
     pub width: i32,
     pub height: i32,
     pub tiles: Vec<Vec<TileType>>,
-
-    // Helper for a list of x,y iterations
-    pub iter: Vec<Point>,
 }
 
 impl Map {
@@ -32,35 +29,20 @@ impl Map {
     /// densities. I hate this, but it's my first time doing something like this
     /// so I'm giving up for now.
     pub fn new(mut rng: &mut Rand32, width: i32, height: i32) -> Map {
-        // Pre-build a vector of points to iterate over for code cleanlyness
-        // later down the line. I don't know if this is a good idea or bad idea.
-        let mut iter = Vec::new();
-        for x in 0..width - 1 {
-            for y in 0..height - 1 {
-                iter.push(Point {
-                    x: x as usize,
-                    y: y as usize,
-                });
-            }
-        }
-
         let mut map = Map {
             width,
             height,
             tiles: vec![vec![TileType::Water; height as usize]; width as usize],
-            iter: iter.clone(),
         };
         let mut grass_map = Map {
             width,
             height,
             tiles: vec![vec![TileType::Water; height as usize]; width as usize],
-            iter: iter.clone(),
         };
         let mut grass_dense_map = Map {
             width,
             height,
             tiles: vec![vec![TileType::Water; height as usize]; width as usize],
-            iter: iter.clone(),
         };
 
         // Generate the island
@@ -71,14 +53,16 @@ impl Map {
 
         let pct_grass = 0.80;
         let pct_sand = (1_f64 - pct_grass) / 2_f64;
-        for p in grass_map.iter.iter() {
-            if grass_map.tiles[p.x][p.y] != TileType::Water {
-                let scaled_x =
-                    (p.x as f64 * pct_grass + grass_map.width as f64 * pct_sand) as usize;
-                let scaled_y =
-                    (p.y as f64 * pct_grass + grass_map.height as f64 * pct_sand) as usize;
-                if map.tiles[scaled_x][scaled_y] != TileType::Water {
-                    map.tiles[scaled_x][scaled_y] = TileType::Grass;
+        for x in 0usize..(grass_map.width as usize - 1usize) {
+            for y in 0usize..(grass_map.width as usize - 1usize) {
+                if grass_map.tiles[x][y] != TileType::Water {
+                    let scaled_x =
+                        (x as f64 * pct_grass + grass_map.width as f64 * pct_sand) as usize;
+                    let scaled_y =
+                        (y as f64 * pct_grass + grass_map.height as f64 * pct_sand) as usize;
+                    if map.tiles[scaled_x][scaled_y] != TileType::Water {
+                        map.tiles[scaled_x][scaled_y] = TileType::Grass;
+                    }
                 }
             }
         }
@@ -88,14 +72,16 @@ impl Map {
 
         let pct_grass = 0.50;
         let pct_sand = (1_f64 - pct_grass) / 2_f64;
-        for p in grass_dense_map.iter.iter() {
-            if grass_dense_map.tiles[p.x][p.y] != TileType::Water {
-                let scaled_x =
-                    (p.x as f64 * pct_grass + grass_dense_map.width as f64 * pct_sand) as usize;
-                let scaled_y =
-                    (p.y as f64 * pct_grass + grass_dense_map.height as f64 * pct_sand) as usize;
-                if map.tiles[scaled_x][scaled_y] != TileType::Water {
-                    map.tiles[scaled_x][scaled_y] = TileType::Grass;
+        for x in 0..width - 1 {
+            for y in 0..height - 1 {
+                if grass_dense_map.tiles[x as usize][y as usize] != TileType::Water {
+                    let scaled_x =
+                        (x as f64 * pct_grass + grass_dense_map.width as f64 * pct_sand) as usize;
+                    let scaled_y =
+                        (y as f64 * pct_grass + grass_dense_map.height as f64 * pct_sand) as usize;
+                    if map.tiles[scaled_x][scaled_y] != TileType::Water {
+                        map.tiles[scaled_x][scaled_y] = TileType::Grass;
+                    }
                 }
             }
         }
@@ -150,12 +136,14 @@ pub fn get_random_location_of_tile(map: &Map, rng: &mut Rand32, tile_type: TileT
 
 /// Modify the tiles structure to create something that looks like an island
 fn cellular_automata_map(map: &mut Map, rng: &mut Rand32, iterations: i32) {
-    for p in map.iter.iter() {
-        if p.x < 1 || p.x as i32 > map.width - 1 || p.y < 1 || p.y as i32 > map.height - 1 {
-            continue;
-        }
-        if rng.rand_float() > 0.55 {
-            map.tiles[p.x][p.y] = TileType::Sand;
+    for x in 0usize..(map.width as usize - 1usize) {
+        for y in 0usize..(map.width as usize - 1usize) {
+            if x < 1 || x as i32 > map.width - 1 || y < 1 || y as i32 > map.height - 1 {
+                continue;
+            }
+            if rng.rand_float() > 0.55 {
+                map.tiles[x][y] = TileType::Sand;
+            }
         }
     }
 
@@ -163,40 +151,42 @@ fn cellular_automata_map(map: &mut Map, rng: &mut Rand32, iterations: i32) {
     for _ in 0..iterations {
         let mut new_tiles = map.tiles.clone();
 
-        for p in map.iter.iter() {
-            if p.x < 1 || p.x as i32 > map.width - 1 || p.y < 1 || p.y as i32 > map.height - 1 {
-                continue;
-            }
-            let mut neighbors = 0;
-            if map.tiles[p.x - 1][p.y] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x + 1][p.y] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x][p.y - 1] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x][p.y + 1] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x - 1][p.y - 1] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x + 1][p.y - 1] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x - 1][p.y + 1] == TileType::Water {
-                neighbors += 1
-            }
-            if map.tiles[p.x + 1][p.y + 1] == TileType::Water {
-                neighbors += 1
-            }
+        for x in 0usize..(map.width as usize - 1usize) {
+            for y in 0usize..(map.width as usize - 1usize) {
+                if x < 1 || x as i32 > map.width - 1 || y < 1 || y as i32 > map.height - 1 {
+                    continue;
+                }
+                let mut neighbors = 0;
+                if map.tiles[x - 1][y] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x + 1][y] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x][y - 1] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x][y + 1] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x - 1][y - 1] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x + 1][y - 1] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x - 1][y + 1] == TileType::Water {
+                    neighbors += 1
+                }
+                if map.tiles[x + 1][y + 1] == TileType::Water {
+                    neighbors += 1
+                }
 
-            if neighbors > 4 {
-                new_tiles[p.x][p.y] = TileType::Water;
-            } else {
-                new_tiles[p.x][p.y] = TileType::Sand;
+                if neighbors > 4 {
+                    new_tiles[x][y] = TileType::Water;
+                } else {
+                    new_tiles[x][y] = TileType::Sand;
+                }
             }
         }
         map.tiles = new_tiles.clone();

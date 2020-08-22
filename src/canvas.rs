@@ -114,24 +114,26 @@ impl Canvas {
         );
 
         // Iterate through the tiles, drawing the color for each
-        for p in map.iter.iter() {
-            match map.tiles[p.x][p.y] {
-                TileType::Water => {
-                    self.ctx.set_fill_style_color(water_color);
-                }
-                TileType::Sand => {
-                    self.ctx.set_fill_style_color(sand_color);
-                }
-                TileType::Grass => {
-                    self.ctx.set_fill_style_color(grass_color);
-                }
-            };
-            self.ctx.fill_rect(
-                p.x as f64 * self.scaled_width,
-                p.y as f64 * self.scaled_height,
-                self.scaled_width,
-                self.scaled_height,
-            );
+        for x in 0usize..(map.width as usize - 1usize) {
+            for y in 0usize..(map.width as usize - 1usize) {
+                match map.tiles[x][y] {
+                    TileType::Water => {
+                        self.ctx.set_fill_style_color(water_color);
+                    }
+                    TileType::Sand => {
+                        self.ctx.set_fill_style_color(sand_color);
+                    }
+                    TileType::Grass => {
+                        self.ctx.set_fill_style_color(grass_color);
+                    }
+                };
+                self.ctx.fill_rect(
+                    x as f64 * self.scaled_width,
+                    y as f64 * self.scaled_height,
+                    self.scaled_width,
+                    self.scaled_height,
+                );
+            }
         }
     }
 
