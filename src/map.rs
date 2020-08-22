@@ -1,4 +1,4 @@
-use super::{Location, WantsToMoveTo};
+use crate::components::{Location, WantsToMoveTo};
 use oorandom::Rand32;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;

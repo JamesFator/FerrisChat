@@ -1,4 +1,4 @@
-use super::{Disappearing, GraphicAnimatable, GraphicRenderable};
+use crate::components::{Disappearing, GraphicAnimatable, GraphicRenderable};
 use specs::prelude::*;
 
 pub struct AnimationSystem {}

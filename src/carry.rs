@@ -1,4 +1,4 @@
-use super::{CarriedBy, Location};
+use crate::components::{CarriedBy, Location};
 use specs::prelude::*;
 
 pub struct CarrySystem {}

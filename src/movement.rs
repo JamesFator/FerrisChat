@@ -1,4 +1,5 @@
-use super::{Location, Map, WantsToMoveTo};
+use crate::components::{Location, WantsToMoveTo};
+use crate::map::Map;
 use specs::prelude::*;
 
 pub struct MovementSystem {}

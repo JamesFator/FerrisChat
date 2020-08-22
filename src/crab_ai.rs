@@ -1,4 +1,5 @@
-use super::{valid_walking_location, CrabAI, CrabAIState, Location, Map, WantsToMoveTo};
+use crate::components::{CrabAI, CrabAIState, Location, WantsToMoveTo};
+use crate::map::{valid_walking_location, Map};
 use specs::prelude::*;
 
 pub struct CrabAISystem {}

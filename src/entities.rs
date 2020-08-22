@@ -1,16 +1,18 @@
-use super::*;
+use crate::components::*;
+use crate::map::{get_random_location_of_tile, Map, TileType};
 use oorandom::Rand32;
+use specs::prelude::*;
 use specs::saveload::{MarkedBuilder, SimpleMarker};
 use std::ops::Range;
 
 const MAXTREES: i32 = 20;
 const MAXKNIVES: i32 = 1;
 
-pub fn get_entity_for_name(ecs: &World, name: String) -> Option<Entity> {
+pub fn get_entity_for_name(ecs: &World, name: &String) -> Option<Entity> {
     let entities = ecs.entities();
     let player_infos = ecs.read_storage::<PlayerInfo>();
     for (entity, player_info) in (&entities, &player_infos).join() {
-        if player_info.name == name {
+        if player_info.name == *name {
             return Some(entity);
         }
     }

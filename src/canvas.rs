@@ -1,4 +1,7 @@
-use super::*;
+use crate::components::*;
+use crate::map::{Map, TileType};
+use specs::prelude::*;
+use stdweb::traits::*;
 use stdweb::unstable::TryInto;
 use stdweb::web::html_element::CanvasElement;
 use stdweb::web::{document, CanvasRenderingContext2d, FillRule};

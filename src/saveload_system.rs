@@ -59,9 +59,8 @@ pub fn save_game(ecs: &mut World) -> String {
             CrabAI
         );
 
-        // TODO: Compress serde
+        // TODO: Compress serde?
         state_string = writer.to_string();
-        super::stdweb::console!(log, format!("{}", state_string));
     }
 
     // Clean up
