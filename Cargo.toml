@@ -6,8 +6,9 @@ edition = "2018"
 
 [dependencies]
 censor = "0.1.1"
+compress = "0.2.1"
 oorandom = "11.1.2"
-serde= { version = "^1.0.44", features = ["derive"] }
+serde = { version = "1.0.115", features = ["derive"] }
 specs = { version = "0.16.1", features = ["serde"] }
 specs-derive = "0.4.1"
 serde_json = "^1.0.44"

@@ -1,9 +1,11 @@
 extern crate serde;
+#[macro_use]
 extern crate stdweb;
 
 use censor::*;
 use oorandom::Rand32;
 use specs::prelude::*;
+use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 use std::cell::RefCell;
 use std::rc::Rc;
 use stdweb::traits::*;
@@ -25,6 +27,9 @@ mod crab_ai;
 use crab_ai::CrabAISystem;
 mod animation;
 use animation::{AnimationSystem, DisappearingSystem};
+mod saveload_system;
+use saveload_system::save_game;
+mod string_writer;
 
 pub fn handle_input(ecs: &mut World, input: &str, for_entity: Entity) {
     let new_x;
@@ -60,6 +65,18 @@ pub fn handle_click(ecs: &mut World, x: i32, y: i32, for_entity: Entity) {
         y: ((y as f64 - rect.get_left() as f64) / canvas.scaled_height) as i32,
         speed: 2,
     };
+    let msg = format!("{}, {}", desired_location.x, desired_location.y);
+    js! {
+        let socket = new WebSocket("ws://127.0.0.1:3012");
+
+        socket.onopen = function(e) {
+            socket.send(@{msg});
+        };
+
+        socket.onmessage = function(event) {
+            console.log(event.data);
+        };
+    }
     if valid_walking_location(&map, &desired_location) {
         let mut move_tos = ecs.write_storage::<WantsToMoveTo>();
         move_tos
@@ -133,6 +150,12 @@ impl State {
         self.ecs.maintain();
     }
 
+    pub fn save_state(&mut self) {
+        // let data = serde_json::to_string(&*self.ecs.fetch::<Map>()).unwrap();
+        // stdweb::console!(log, format!("{}", data));
+        save_game(&mut self.ecs);
+    }
+
     fn tick(&mut self) {
         // Update the FPS GUI
         self.update_fps_tracker();
@@ -142,6 +165,8 @@ impl State {
 
         // Run all our ECS systems
         self.run_systems();
+
+        // self.save_state();
     }
 }
 
@@ -152,6 +177,7 @@ fn main() {
     let height: i32 = 100;
 
     let gs = Rc::new(RefCell::new(State { ecs: World::new() }));
+    gs.borrow_mut().ecs.register::<SerializationHelper>();
     gs.borrow_mut().ecs.register::<FPSTracker>();
     gs.borrow_mut().ecs.register::<Location>();
     gs.borrow_mut().ecs.register::<PlayerInfo>();
@@ -164,6 +190,12 @@ fn main() {
     gs.borrow_mut().ecs.register::<Disappearing>();
     gs.borrow_mut().ecs.register::<CarriedBy>();
     gs.borrow_mut().ecs.register::<CrabAI>();
+
+    // Serialization helpers
+    gs.borrow_mut().ecs.register::<SimpleMarker<SerializeMe>>();
+    gs.borrow_mut()
+        .ecs
+        .insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
     // Canvas is where we do all our rendering
     let canvas = Canvas::new("#canvas", width as u32, height as u32);
@@ -189,6 +221,7 @@ fn main() {
     // Insert resources into ECS
     gs.borrow_mut().ecs.insert(map);
     gs.borrow_mut().ecs.insert(rng);
+    gs.borrow_mut().save_state();
 
     // Link keystrokes to player input via stdweb
     stdweb::web::document().add_event_listener({

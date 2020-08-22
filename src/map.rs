@@ -1,20 +1,22 @@
 use super::{Location, WantsToMoveTo};
 use oorandom::Rand32;
+use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Deserialize, Serialize)]
 pub enum TileType {
     Water,
     Sand,
     Grass,
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Deserialize, Serialize)]
 pub struct Point {
     pub x: usize,
     pub y: usize,
 }
 
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Map {
     pub width: i32,
     pub height: i32,

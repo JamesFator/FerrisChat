@@ -1,5 +1,6 @@
 use super::*;
 use oorandom::Rand32;
+use specs::saveload::{MarkedBuilder, SimpleMarker};
 use std::ops::Range;
 
 const MAXTREES: i32 = 20;
@@ -34,6 +35,7 @@ pub fn create_fps_tracker(ecs: &mut World) {
             offset_x: 0_f64,
             offset_y: 0_f64,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -88,7 +90,7 @@ pub fn spawn_crab(mut ecs: &mut World, map: &Map, mut rng: &mut Rand32, name: &s
         });
     }
 
-    let entity = crab.build();
+    let entity = crab.marked::<SimpleMarker<SerializeMe>>().build();
 
     // It not AI, then player character, so spawn on beach
     if !ai {
@@ -119,6 +121,7 @@ fn create_wave_for_entity(ecs: &mut World, for_entity: &Entity) {
             total_ticks: 9,
             ticks_left: 15,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -151,6 +154,7 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
             total_ticks: 100,
             ticks_left: 100,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -161,13 +165,14 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
 pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
         .with(Location { x, y })
-        .with(Renderable { render_order: 1 })
+        .with(Renderable { render_order: 3 })
         .with(TextRenderable {
             text: String::from("🔪"),
             font_size: 40_f64,
             offset_x: 5_f64,
             offset_y: 0_f64,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -181,6 +186,7 @@ pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
             offset_x: 0_f64,
             offset_y: 0_f64,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -210,5 +216,6 @@ pub fn create_poop(ecs: &mut World, location: Location) {
             total_ticks: 100,
             ticks_left: 100,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
