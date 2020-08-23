@@ -12,7 +12,7 @@ mod canvas;
 use canvas::{Canvas, DrawSystem};
 use ferris_chat::components::*;
 use ferris_chat::entities::*;
-use ferris_chat::saveload_system::load_game;
+use ferris_chat::saveload_system::{load_game, serialize_player_input, PlayerInput};
 use ferris_chat::state::{handle_chat_input, handle_click, handle_input, initialize_ecs, State};
 
 pub struct GUIComponents {
@@ -32,7 +32,16 @@ pub fn handle_client_click(mut ecs: &mut World, x: i32, y: i32, for_name: String
         relative_x = ((x as f64 - rect.get_left() as f64) / canvas.scaled_width) as i32;
         relative_y = ((y as f64 - rect.get_top() as f64) / canvas.scaled_height) as i32;
     }
-    handle_click(&mut ecs, relative_x, relative_y, for_name)
+    let player_input = PlayerInput::Click {
+        id: for_name.clone(),
+        x: relative_x,
+        y: relative_y,
+    };
+    stdweb::web::window()
+        .local_storage()
+        .insert("player_input", &serialize_player_input(player_input))
+        .expect("Failed to write player_input to local_storage");
+    handle_click(&mut ecs, relative_x, relative_y, for_name);
 }
 
 /// System for tracking FPS. In main file because depends on stdweb.
@@ -57,21 +66,32 @@ fn read_from_local_storage(mut ecs: &mut World) {
         if chat_msg.len() == 0 {
             return; // Don't render a bubble if nothing was said
         }
+        let player_input = PlayerInput::Chat {
+            id: String::from("Ferris"),
+            message: chat_msg.clone(),
+        };
+        stdweb::web::window()
+            .local_storage()
+            .insert("player_input", &serialize_player_input(player_input))
+            .expect("Failed to write player_input to local_storage");
         handle_chat_input(&mut ecs, &chat_msg, String::from("Ferris"));
     }
     stdweb::web::window().local_storage().remove("chat_input");
 }
 
 fn rendering_tick(state: &mut State, gui: &mut GUIComponents) {
-    let remote_session_save_state = stdweb::web::window()
-        .local_storage()
-        .get("save_state")
-        .expect("Cannot read local storage");
-    if remote_session_save_state != "" {
-        // If save state exists in local storage, then we're connected to a remote session.
-        // Load that into our ECS instead of running systems manually.
-        load_game(&mut state.ecs, remote_session_save_state);
-    } else {
+    let remote_session_save_state = stdweb::web::window().local_storage().get("save_state");
+    let mut remote_session = false;
+    if let Some(save_state) = remote_session_save_state {
+        if save_state.len() > 0 {
+            remote_session = true;
+            // If save state exists in local storage, then we're connected to a remote session.
+            // Load that into our ECS instead of running systems manually.
+            load_game(&mut state.ecs, save_state);
+            stdweb::web::window().local_storage().remove("save_state");
+        }
+    }
+    if !remote_session {
         // If no remote sesson save state, then run our ECS locally.
         state.tick();
     }
@@ -113,15 +133,18 @@ fn main() {
         window.localStorage.setItem("save_state", "");
 
         // Attempt to connect to server
-        let socket = new WebSocket("ws://127.0.0.1:3012");
-
-        // socket.onopen = function(e) {
-        //     socket.send(@{msg});
-        // };
+        var socket = new WebSocket("ws://127.0.0.1:3012");
 
         socket.onmessage = function(event) {
             console.log("save data received");
             window.localStorage.setItem("save_state", event.data);
+
+            // Send player_input back
+            var player_input = window.localStorage.getItem("player_input");
+            if (player_input !== null && player_input != "") {
+                socket.send(player_input);
+                window.localStorage.setItem("player_input", "");
+            }
         };
     }
 
@@ -160,14 +183,14 @@ fn main() {
         let gui = gui.clone();
         stdweb::web::set_timeout(
             move || {
-                game_loop(gs.clone(), gui.clone(), time);
+                game_loop(gs.clone(), gui.clone(), 100);
                 rendering_tick(&mut gs.borrow_mut(), &mut gui.borrow_mut());
             },
             time,
         );
     }
 
-    game_loop(gs, gui, 100);
+    game_loop(gs, gui, 10);
 
     stdweb::event_loop();
 }

@@ -12,7 +12,7 @@ use crate::crab_ai::CrabAISystem;
 use crate::entities::*;
 use crate::map::{valid_walking_location, Map};
 use crate::movement::MovementSystem;
-use crate::saveload_system::{serialize_ecs, serialize_map};
+use crate::saveload_system::{serialize_ecs, serialize_map, PlayerInput};
 
 pub fn handle_input(ecs: &mut World, input: &str, for_name: String) {
     let maybe_entity;
@@ -113,6 +113,14 @@ impl State {
 
     pub fn get_serialized_ecs(&mut self) -> String {
         serialize_ecs(&mut self.ecs)
+    }
+
+    pub fn handle_player_input(&mut self, player_input: PlayerInput) {
+        match player_input {
+            PlayerInput::Click { id, x, y } => handle_click(&mut self.ecs, x, y, id),
+            PlayerInput::Chat { id, message } => handle_chat_input(&mut self.ecs, &message, id),
+            _ => {}
+        }
     }
 
     pub fn tick(&mut self) {

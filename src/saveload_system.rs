@@ -143,3 +143,19 @@ pub fn load_game(ecs: &mut World, package_save_str: String) {
         *map_ref = new_map.clone();
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub enum PlayerInput {
+    ChangeName { id: String, name: String },
+    SpecialCharacter { id: String, character: char },
+    Click { id: String, x: i32, y: i32 },
+    Chat { id: String, message: String },
+}
+
+pub fn serialize_player_input(player_input: PlayerInput) -> String {
+    serde_json::to_string(&player_input).unwrap()
+}
+
+pub fn deserialize_player_input(player_input_str: String) -> PlayerInput {
+    serde_json::from_str(&player_input_str).unwrap()
+}
