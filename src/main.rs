@@ -8,10 +8,16 @@ use std::rc::Rc;
 use stdweb::traits::*;
 use stdweb::web::{event::ClickEvent, event::KeyDownEvent, Date, IEventTarget};
 
-use ferris_chat::canvas::{Canvas, DrawSystem};
+mod canvas;
+use canvas::{Canvas, DrawSystem};
 use ferris_chat::components::*;
 use ferris_chat::entities::*;
+use ferris_chat::saveload_system::load_game;
 use ferris_chat::state::{handle_chat_input, handle_click, handle_input, initialize_ecs, State};
+
+pub struct GUIComponents {
+    pub fps_tracker: FPSTracker,
+}
 
 pub fn handle_client_click(mut ecs: &mut World, x: i32, y: i32, for_name: String) {
     let relative_x;
@@ -24,25 +30,24 @@ pub fn handle_client_click(mut ecs: &mut World, x: i32, y: i32, for_name: String
             .get_bounding_client_rect();
         let canvas = ecs.fetch::<Canvas>();
         relative_x = ((x as f64 - rect.get_left() as f64) / canvas.scaled_width) as i32;
-        relative_y = ((y as f64 - rect.get_left() as f64) / canvas.scaled_height) as i32;
+        relative_y = ((y as f64 - rect.get_top() as f64) / canvas.scaled_height) as i32;
     }
     handle_click(&mut ecs, relative_x, relative_y, for_name)
 }
 
 /// System for tracking FPS. In main file because depends on stdweb.
-fn update_fps_tracker(ecs: &mut World) {
-    let mut fps_trackers = ecs.write_storage::<FPSTracker>();
-    let mut text_renders = ecs.write_storage::<TextRenderable>();
-
-    let now = Date::new().get_seconds() as u64;
-    for (mut fps_tracker, mut text_render) in (&mut fps_trackers, &mut text_renders).join() {
+fn update_fps_tracker(mut ecs: &mut World, fps_tracker: &mut FPSTracker) {
+    // Update the tracker data
+    {
+        let now = Date::new().get_seconds() as u64;
         if fps_tracker.for_time != now {
             fps_tracker.for_time = now;
-            text_render.text = String::from(format!("FPS: {}", fps_tracker.seen_frames));
+            fps_tracker.prev_fps = fps_tracker.seen_frames;
             fps_tracker.seen_frames = 0;
         }
         fps_tracker.seen_frames += 1;
     }
+    add_fps_tracker(&mut ecs, &fps_tracker);
 }
 
 fn read_from_local_storage(mut ecs: &mut World) {
@@ -57,14 +62,25 @@ fn read_from_local_storage(mut ecs: &mut World) {
     stdweb::web::window().local_storage().remove("chat_input");
 }
 
-fn rendering_tick(state: &mut State) {
-    // Update the FPS GUI
-    update_fps_tracker(&mut state.ecs);
+fn rendering_tick(state: &mut State, gui: &mut GUIComponents) {
+    let remote_session_save_state = stdweb::web::window()
+        .local_storage()
+        .get("save_state")
+        .expect("Cannot read local storage");
+    if remote_session_save_state != "" {
+        // If save state exists in local storage, then we're connected to a remote session.
+        // Load that into our ECS instead of running systems manually.
+        load_game(&mut state.ecs, remote_session_save_state);
+    } else {
+        // If no remote sesson save state, then run our ECS locally.
+        state.tick();
+    }
 
     // Check the window local storage for updates
     read_from_local_storage(&mut state.ecs);
 
-    state.tick();
+    // Update the FPS GUI
+    update_fps_tracker(&mut state.ecs, &mut gui.fps_tracker);
 
     // Invoke the draw system last
     let mut draw_system = DrawSystem {};
@@ -78,6 +94,13 @@ fn main() {
     let height: i32 = 100;
 
     let gs = Rc::new(RefCell::new(State { ecs: World::new() }));
+    let gui = Rc::new(RefCell::new(GUIComponents {
+        fps_tracker: FPSTracker {
+            for_time: 0,
+            seen_frames: 0,
+            prev_fps: 0,
+        },
+    }));
     initialize_ecs(
         &mut gs.borrow_mut().ecs,
         width,
@@ -85,12 +108,26 @@ fn main() {
         Date::new().get_seconds() as u64,
     );
 
+    js! {
+        // Clear save_state storage in case server is not up
+        window.localStorage.setItem("save_state", "");
+
+        // Attempt to connect to server
+        let socket = new WebSocket("ws://127.0.0.1:3012");
+
+        // socket.onopen = function(e) {
+        //     socket.send(@{msg});
+        // };
+
+        socket.onmessage = function(event) {
+            console.log("save data received");
+            window.localStorage.setItem("save_state", event.data);
+        };
+    }
+
     // Canvas is where we do all our rendering
     let canvas = Canvas::new("#canvas", width as u32, height as u32);
     gs.borrow_mut().ecs.insert(canvas);
-
-    // Create game helper entities
-    create_fps_tracker(&mut gs.borrow_mut().ecs);
 
     // Link keystrokes to player input via stdweb
     stdweb::web::document().add_event_listener({
@@ -118,18 +155,19 @@ fn main() {
     });
 
     // Recurive main loop because that's the only way I've found to do it in stdweb
-    fn game_loop(gs: Rc<RefCell<State>>, time: u32) {
+    fn game_loop(gs: Rc<RefCell<State>>, gui: Rc<RefCell<GUIComponents>>, time: u32) {
         let gs = gs.clone();
+        let gui = gui.clone();
         stdweb::web::set_timeout(
             move || {
-                game_loop(gs.clone(), time);
-                rendering_tick(&mut gs.borrow_mut());
+                game_loop(gs.clone(), gui.clone(), time);
+                rendering_tick(&mut gs.borrow_mut(), &mut gui.borrow_mut());
             },
             time,
         );
     }
 
-    game_loop(gs, 100);
+    game_loop(gs, gui, 100);
 
     stdweb::event_loop();
 }

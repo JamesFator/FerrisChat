@@ -4,19 +4,14 @@ use specs::prelude::*;
 use specs::saveload::{ConvertSaveload, Marker};
 use specs_derive::*;
 
-// Serialization helper code. Need to implement ConvertSaveload for each type that contains an
-// Entity.
-pub struct SerializeMe;
+// Helper for serializing entities in serde
+pub struct EntityMarker;
 
-#[derive(Component, ConvertSaveload, Clone)]
-pub struct SerializationHelper {
-    pub map: super::map::Map,
-}
-
-#[derive(Component, ConvertSaveload, Clone)]
+#[derive(Component, ConvertSaveload, Copy, Clone)]
 pub struct FPSTracker {
     pub for_time: u64,
     pub seen_frames: u16,
+    pub prev_fps: u16,
 }
 
 #[derive(Component, ConvertSaveload, Clone)]

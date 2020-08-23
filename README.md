@@ -9,10 +9,10 @@ $ cargo install cargo-web
 ## Running
 ```bash
 # Running headless server
-$ cargo run --bin server
+$ cargo run --bin server --features server
 
 # Running standalone client
-$ cargo web start --bin ferris_chat_client
+$ cargo web start --bin ferris_chat_client --features client
 # Load http://127.0.0.1:8000/
 ```
 

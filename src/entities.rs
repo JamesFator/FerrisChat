@@ -23,21 +23,35 @@ pub fn get_entity_for_name(ecs: &World, name: &String) -> Option<Entity> {
 // GUI entities
 //
 
-pub fn create_fps_tracker(ecs: &mut World) {
+pub fn add_fps_tracker(ecs: &mut World, tracker: &FPSTracker) {
+    // First delete any existing trackers so we don't write over eachother
+    {
+        let entities = ecs.entities();
+        let mut existing_tracker: Option<Entity> = None;
+        {
+            let fps_trackers = ecs.read_storage::<FPSTracker>();
+            for (entity, _) in (&entities, &fps_trackers).join() {
+                existing_tracker = Some(entity);
+                break;
+            }
+        }
+        if let Some(entity) = existing_tracker {
+            entities
+                .delete(entity)
+                .expect("Failed to delete existing FPSTracker");
+        }
+    }
     ecs.create_entity()
-        .with(FPSTracker {
-            for_time: 0,
-            seen_frames: 0,
-        })
+        .with(tracker.clone())
         .with(Location { x: 5, y: 5 })
         .with(Renderable { render_order: 0 })
         .with(TextRenderable {
-            text: String::from(""),
+            text: format!("FPS: {}", tracker.prev_fps),
             font_size: 20_f64,
             offset_x: 0_f64,
             offset_y: 0_f64,
         })
-        .marked::<SimpleMarker<SerializeMe>>()
+        .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
 
@@ -92,7 +106,7 @@ pub fn spawn_crab(mut ecs: &mut World, map: &Map, mut rng: &mut Rand32, name: &s
         });
     }
 
-    let entity = crab.marked::<SimpleMarker<SerializeMe>>().build();
+    let entity = crab.marked::<SimpleMarker<EntityMarker>>().build();
 
     // It not AI, then player character, so spawn on beach
     if !ai {
@@ -123,7 +137,7 @@ fn create_wave_for_entity(ecs: &mut World, for_entity: &Entity) {
             total_ticks: 9,
             ticks_left: 15,
         })
-        .marked::<SimpleMarker<SerializeMe>>()
+        .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
 
@@ -156,7 +170,7 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
             total_ticks: 100,
             ticks_left: 100,
         })
-        .marked::<SimpleMarker<SerializeMe>>()
+        .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
 
@@ -174,7 +188,7 @@ pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
             offset_x: 5_f64,
             offset_y: 0_f64,
         })
-        .marked::<SimpleMarker<SerializeMe>>()
+        .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
 
@@ -188,7 +202,7 @@ pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
             offset_x: 0_f64,
             offset_y: 0_f64,
         })
-        .marked::<SimpleMarker<SerializeMe>>()
+        .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
 
@@ -218,6 +232,6 @@ pub fn create_poop(ecs: &mut World, location: Location) {
             total_ticks: 100,
             ticks_left: 100,
         })
-        .marked::<SimpleMarker<SerializeMe>>()
+        .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }

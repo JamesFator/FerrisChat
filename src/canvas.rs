@@ -1,5 +1,5 @@
-use crate::components::*;
-use crate::map::{Map, TileType};
+use ferris_chat::components::*;
+use ferris_chat::map::{Map, TileType};
 use specs::prelude::*;
 use stdweb::traits::*;
 use stdweb::unstable::TryInto;

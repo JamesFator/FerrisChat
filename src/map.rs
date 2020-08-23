@@ -10,12 +10,6 @@ pub enum TileType {
     Grass,
 }
 
-#[derive(PartialEq, Copy, Clone, Deserialize, Serialize)]
-pub struct Point {
-    pub x: usize,
-    pub y: usize,
-}
-
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Map {
     pub width: i32,

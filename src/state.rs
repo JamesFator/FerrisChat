@@ -12,7 +12,7 @@ use crate::crab_ai::CrabAISystem;
 use crate::entities::*;
 use crate::map::{valid_walking_location, Map};
 use crate::movement::MovementSystem;
-use crate::saveload_system::save_game;
+use crate::saveload_system::{serialize_ecs, serialize_map};
 
 pub fn handle_input(ecs: &mut World, input: &str, for_name: String) {
     let maybe_entity;
@@ -107,20 +107,21 @@ impl State {
         self.ecs.maintain();
     }
 
-    pub fn save_state(&mut self) {
-        save_game(&mut self.ecs);
+    pub fn get_serialized_map(&self) -> String {
+        serialize_map(&self.ecs.fetch::<Map>())
+    }
+
+    pub fn get_serialized_ecs(&mut self) -> String {
+        serialize_ecs(&mut self.ecs)
     }
 
     pub fn tick(&mut self) {
         // Run all our ECS systems
         self.run_systems();
-
-        // self.save_state();
     }
 }
 
 pub fn initialize_ecs(mut ecs: &mut World, width: i32, height: i32, seed: u64) {
-    ecs.register::<SerializationHelper>();
     ecs.register::<FPSTracker>();
     ecs.register::<Location>();
     ecs.register::<PlayerInfo>();
@@ -135,8 +136,8 @@ pub fn initialize_ecs(mut ecs: &mut World, width: i32, height: i32, seed: u64) {
     ecs.register::<CrabAI>();
 
     // Serialization helpers
-    ecs.register::<SimpleMarker<SerializeMe>>();
-    ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
+    ecs.register::<SimpleMarker<EntityMarker>>();
+    ecs.insert(SimpleMarkerAllocator::<EntityMarker>::new());
 
     // Psuedo random number generator we'll use
     let mut rng = Rand32::new(seed);

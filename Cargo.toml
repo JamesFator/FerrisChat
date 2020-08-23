@@ -12,14 +12,19 @@ serde = { version = "1.0.115", features = ["derive"] }
 specs = { version = "0.16.1", features = ["serde"] }
 specs-derive = "0.4.1"
 serde_json = "^1.0.44"
-stdweb = "0.4.20"
+stdweb = { version = "0.4.20", optional = true }
+tungstenite = { verion = "0.11.1", optional = true }
 
+[features]
+client = ["stdweb"]
+server = ["tungstenite"]
 
 [[bin]]
 name = "ferris_chat_client"
 path = "src/main.rs"
+required-features = ["client"]
 
 [[bin]]
 name = "server"
 path = "src/server/main.rs"
-edition = "2018"
+required-features = ["server"]
