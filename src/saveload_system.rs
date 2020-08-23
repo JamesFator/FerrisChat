@@ -146,8 +146,10 @@ pub fn load_game(ecs: &mut World, package_save_str: String) {
 
 #[derive(Serialize, Deserialize)]
 pub enum PlayerInput {
+    CreatePlayer { id: String, name: String },
+    DeletePlayer { id: String },
     ChangeName { id: String, name: String },
-    SpecialCharacter { id: String, character: char },
+    SpecialInput { id: String, input: String },
     Click { id: String, x: i32, y: i32 },
     Chat { id: String, message: String },
 }

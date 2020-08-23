@@ -8,15 +8,41 @@ use std::ops::Range;
 const MAXTREES: i32 = 20;
 const MAXKNIVES: i32 = 1;
 
-pub fn get_entity_for_name(ecs: &World, name: &String) -> Option<Entity> {
+//
+// Util functions
+//
+
+pub fn get_player_with_id(ecs: &World, player_id: &String) -> Option<Entity> {
     let entities = ecs.entities();
     let player_infos = ecs.read_storage::<PlayerInfo>();
     for (entity, player_info) in (&entities, &player_infos).join() {
-        if player_info.name == *name {
+        if player_info.id == *player_id {
             return Some(entity);
         }
     }
     return None;
+}
+
+pub fn delete_player_with_id(ecs: &mut World, player_id: &String) {
+    let maybe_entity = get_player_with_id(&ecs, &player_id);
+    if maybe_entity.is_none() {
+        return;
+    }
+    let player_entity = maybe_entity.unwrap();
+
+    // Delete the player and all entities they were carrying
+    let entities = ecs.entities();
+    let carried_bys = ecs.read_storage::<CarriedBy>();
+    let mut entities_to_delete = Vec::new();
+    for (entity, carried_by) in (&entities, &carried_bys).join() {
+        if carried_by.owner == player_entity {
+            entities_to_delete.push(entity);
+        }
+    }
+    entities_to_delete.push(player_entity);
+    for entity in entities_to_delete.iter() {
+        entities.delete(*entity).expect("Failed to delete entity");
+    }
 }
 
 //
@@ -59,20 +85,46 @@ pub fn add_fps_tracker(ecs: &mut World, tracker: &FPSTracker) {
 // Crab entities
 //
 
-pub fn spawn_crab(mut ecs: &mut World, map: &Map, mut rng: &mut Rand32, name: &str, ai: bool) {
-    let location = match ai {
-        true => get_random_location_of_tile(&map, &mut rng, TileType::Grass),
-        false => get_random_location_of_tile(&map, &mut rng, TileType::Sand),
-    };
+pub fn spawn_crab(mut ecs: &mut World, id: &str, name: &str, ai: bool) {
+    if get_player_with_id(&ecs, &id.into()).is_some() {
+        return; // Crab with this name already exists!
+    }
+
+    // Pull everything we need out of the map and rng first before we get mutable
+    // access to the ECS
+    let location;
+    let mut crab_ai: Option<CrabAI> = None;
+    {
+        let map = ecs.read_resource::<Map>();
+        let mut rng = ecs.write_resource::<Rand32>();
+        location = match ai {
+            true => get_random_location_of_tile(&map, &mut rng, TileType::Grass),
+            false => get_random_location_of_tile(&map, &mut rng, TileType::Sand),
+        };
+        if ai {
+            let crab_state = if rng.rand_float() > 0.5 {
+                CrabAIState::SleepingRight
+            } else {
+                CrabAIState::SleepingLeft
+            };
+            crab_ai = Some(CrabAI {
+                crab_state: crab_state,
+                tick_interval: rng.rand_range(Range { start: 20, end: 30 }) as i16,
+                ticks: 0,
+                walk_speed: 1,
+                sleep_duration: rng.rand_range(Range { start: 15, end: 20 }) as i16,
+            });
+        }
+    }
+
+    // Spawn the crab entity
     let mut crab = ecs
         .create_entity()
         .with(location)
-        .with(PlayerInfo {
-            name: String::from(name),
-        })
+        .with(PlayerInfo { id: id.into() })
         .with(Renderable { render_order: 2 })
         .with(TextRenderable {
-            text: String::from(name),
+            text: name.into(),
             font_size: 20_f64,
             offset_x: 0_f64,
             offset_y: 5_f64,
@@ -91,19 +143,8 @@ pub fn spawn_crab(mut ecs: &mut World, map: &Map, mut rng: &mut Rand32, name: &s
             ticks: 0,
         });
 
-    if ai {
-        let crab_state = if rng.rand_float() > 0.5 {
-            CrabAIState::SleepingRight
-        } else {
-            CrabAIState::SleepingLeft
-        };
-        crab = crab.with(CrabAI {
-            crab_state: crab_state,
-            tick_interval: rng.rand_range(Range { start: 20, end: 30 }) as i16,
-            ticks: 0,
-            walk_speed: 1,
-            sleep_duration: rng.rand_range(Range { start: 15, end: 20 }) as i16,
-        });
+    if let Some(crab_ai) = crab_ai {
+        crab = crab.with(crab_ai);
     }
 
     let entity = crab.marked::<SimpleMarker<EntityMarker>>().build();

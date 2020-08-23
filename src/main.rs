@@ -19,10 +19,30 @@ pub struct GUIComponents {
     pub fps_tracker: FPSTracker,
 }
 
-pub fn handle_client_click(mut ecs: &mut World, x: i32, y: i32, for_name: String) {
+fn handle_client_input(mut ecs: &mut World, input: &str) {
+    match input {
+        "p" => {}
+        _ => return,
+    }
+
+    let player_id = ecs.fetch::<String>().to_string();
+    let player_input = PlayerInput::SpecialInput {
+        id: player_id.clone(),
+        input: input.into(),
+    };
+    stdweb::web::window()
+        .local_storage()
+        .insert("player_input", &serialize_player_input(player_input))
+        .expect("Failed to write player_input to local_storage");
+    handle_input(&mut ecs, input, &player_id);
+}
+
+fn handle_client_click(mut ecs: &mut World, x: i32, y: i32) {
+    let player_id;
     let relative_x;
     let relative_y;
     {
+        player_id = ecs.fetch::<String>().to_string();
         let rect = ecs
             .fetch::<Canvas>()
             .ctx
@@ -33,7 +53,7 @@ pub fn handle_client_click(mut ecs: &mut World, x: i32, y: i32, for_name: String
         relative_y = ((y as f64 - rect.get_top() as f64) / canvas.scaled_height) as i32;
     }
     let player_input = PlayerInput::Click {
-        id: for_name.clone(),
+        id: player_id.clone(),
         x: relative_x,
         y: relative_y,
     };
@@ -41,7 +61,7 @@ pub fn handle_client_click(mut ecs: &mut World, x: i32, y: i32, for_name: String
         .local_storage()
         .insert("player_input", &serialize_player_input(player_input))
         .expect("Failed to write player_input to local_storage");
-    handle_click(&mut ecs, relative_x, relative_y, for_name);
+    handle_click(&mut ecs, relative_x, relative_y, &player_id);
 }
 
 /// System for tracking FPS. In main file because depends on stdweb.
@@ -66,17 +86,38 @@ fn read_from_local_storage(mut ecs: &mut World) {
         if chat_msg.len() == 0 {
             return; // Don't render a bubble if nothing was said
         }
+        let player_id = ecs.fetch::<String>().to_string();
         let player_input = PlayerInput::Chat {
-            id: String::from("Ferris"),
+            id: player_id.clone(),
             message: chat_msg.clone(),
         };
         stdweb::web::window()
             .local_storage()
             .insert("player_input", &serialize_player_input(player_input))
             .expect("Failed to write player_input to local_storage");
-        handle_chat_input(&mut ecs, &chat_msg, String::from("Ferris"));
+        handle_chat_input(&mut ecs, &chat_msg, &player_id);
     }
     stdweb::web::window().local_storage().remove("chat_input");
+}
+
+fn create_player(mut ecs: &mut World) {
+    let player_id = ecs.fetch::<String>().to_string();
+    if get_player_with_id(&ecs, &player_id).is_some() {
+        return; // Player is alive and healthy
+    }
+    let player_name = match stdweb::web::window().local_storage().get("player_name") {
+        Some(name) => name.to_string(),
+        None => String::from(""),
+    };
+    let player_input = PlayerInput::CreatePlayer {
+        id: player_id.clone(),
+        name: player_name.clone(),
+    };
+    stdweb::web::window()
+        .local_storage()
+        .insert("player_input", &serialize_player_input(player_input))
+        .expect("Failed to write player_input to local_storage");
+    spawn_crab(&mut ecs, &player_id, &player_name, false);
 }
 
 fn rendering_tick(state: &mut State, gui: &mut GUIComponents) {
@@ -105,6 +146,9 @@ fn rendering_tick(state: &mut State, gui: &mut GUIComponents) {
     // Invoke the draw system last
     let mut draw_system = DrawSystem {};
     draw_system.run_now(&state.ecs);
+
+    // Check if our character is alive. If not, create them
+    create_player(&mut state.ecs);
 }
 
 fn main() {
@@ -112,6 +156,8 @@ fn main() {
 
     let width: i32 = 100;
     let height: i32 = 100;
+    // TODO: Make this a better UUID. If two people join at the same time, they'll clash
+    let player_id = format!("{}", Date::new().get_seconds());
 
     let gs = Rc::new(RefCell::new(State { ecs: World::new() }));
     let gui = Rc::new(RefCell::new(GUIComponents {
@@ -129,6 +175,9 @@ fn main() {
     );
 
     js! {
+        var player_name = prompt("Please enter your crab's name");
+        window.localStorage.setItem("player_name", player_name);
+
         // Clear save_state storage in case server is not up
         window.localStorage.setItem("save_state", "");
 
@@ -152,15 +201,14 @@ fn main() {
     let canvas = Canvas::new("#canvas", width as u32, height as u32);
     gs.borrow_mut().ecs.insert(canvas);
 
+    // Insert the current player ID
+    gs.borrow_mut().ecs.insert(player_id.clone());
+
     // Link keystrokes to player input via stdweb
     stdweb::web::document().add_event_listener({
         let gs = gs.clone();
         move |event: KeyDownEvent| {
-            handle_input(
-                &mut gs.borrow_mut().ecs,
-                event.key().as_ref(),
-                String::from("Ferris"),
-            );
+            handle_client_input(&mut gs.borrow_mut().ecs, event.key().as_ref());
         }
     });
 
@@ -168,12 +216,7 @@ fn main() {
     stdweb::web::document().add_event_listener({
         let gs = gs.clone();
         move |event: ClickEvent| {
-            handle_client_click(
-                &mut gs.borrow_mut().ecs,
-                event.client_x(),
-                event.client_y(),
-                String::from("Ferris"),
-            );
+            handle_client_click(&mut gs.borrow_mut().ecs, event.client_x(), event.client_y());
         }
     });
 

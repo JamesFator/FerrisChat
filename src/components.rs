@@ -22,7 +22,7 @@ pub struct Location {
 
 #[derive(Component, ConvertSaveload, Clone)]
 pub struct PlayerInfo {
-    pub name: String,
+    pub id: String,
 }
 
 #[derive(Component, ConvertSaveload, Clone)]

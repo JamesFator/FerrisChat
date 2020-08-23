@@ -8,6 +8,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::accept_async;
 use tungstenite::{Message, Result};
 
+use ferris_chat::saveload_system::{deserialize_player_input, serialize_player_input, PlayerInput};
+
 pub type AsyncStatePtr = Arc<Mutex<Vec<String>>>;
 
 async fn handle_connection(
@@ -22,13 +24,12 @@ async fn handle_connection(
     let (mut ws_sender, mut ws_receiver) = ws_stream.split();
     let mut interval = tokio::time::interval(Duration::from_millis(100));
 
+    let mut player_id: Option<String> = None;
+
     // Send the inital package which includes the map
     let full_save_state = shared_full_state.lock().unwrap().get(0).unwrap().clone();
-    // Send twice to ensure the client gets the map. #Networking
-    ws_sender
-        .send(Message::Text(full_save_state.clone()))
-        .await?;
     ws_sender.send(Message::Text(full_save_state)).await?;
+    let mut num_full_state_sends: i8 = 5;
 
     let mut msg_fut = ws_receiver.next();
     let mut tick_fut = interval.next();
@@ -39,6 +40,12 @@ async fn handle_connection(
                     Some(msg) => {
                         let msg = msg?;
                         if msg.is_text() || msg.is_binary() {
+                            if player_id.is_none() {
+                                let player_input = deserialize_player_input(msg.to_string());
+                                if let PlayerInput::CreatePlayer { id, name: _ } = player_input {
+                                    player_id = Some(id);
+                                }
+                            }
                             // Push the message onto the player input queue
                             shared_input_queue.lock().unwrap().push(msg.to_string());
                         } else if msg.is_close() {
@@ -51,12 +58,27 @@ async fn handle_connection(
                 };
             }
             Either::Right((_, msg_fut_continue)) => {
-                let incr_save_state = shared_incr_state.lock().unwrap().get(0).unwrap().clone();
-                ws_sender.send(Message::Text(incr_save_state)).await?;
+                let save_state;
+                if num_full_state_sends > 0 {
+                    // For the first few sends, send the full map to ensure they get the map
+                    save_state = shared_full_state.lock().unwrap().get(0).unwrap().clone();
+                    num_full_state_sends -= 1;
+                } else {
+                    save_state = shared_incr_state.lock().unwrap().get(0).unwrap().clone();
+                }
+                ws_sender.send(Message::Text(save_state)).await?;
                 msg_fut = msg_fut_continue; // Continue receiving the WebSocket message.
                 tick_fut = interval.next(); // Wait for next tick.
             }
         }
+    }
+
+    println!("Connection closed: {}", peer);
+
+    // Queue input to delete their entity if any
+    if let Some(player_id) = player_id {
+        let delete_input = serialize_player_input(PlayerInput::DeletePlayer { id: player_id });
+        shared_input_queue.lock().unwrap().push(delete_input);
     }
 
     Ok(())

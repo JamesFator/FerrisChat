@@ -27,6 +27,7 @@ fn start_game_engine(
             // Process the player input queue
             let mut input_queue = shared_input_queue.lock().unwrap();
             for player_input in input_queue.iter() {
+                println!("Received input: {:?}", player_input);
                 gs.handle_player_input(deserialize_player_input((&player_input).to_string()));
             }
             input_queue.clear();

@@ -14,12 +14,12 @@ use crate::map::{valid_walking_location, Map};
 use crate::movement::MovementSystem;
 use crate::saveload_system::{serialize_ecs, serialize_map, PlayerInput};
 
-pub fn handle_input(ecs: &mut World, input: &str, for_name: String) {
+pub fn handle_input(ecs: &mut World, input: &str, player_id: &String) {
     let maybe_entity;
     {
-        maybe_entity = get_entity_for_name(&ecs, &for_name);
+        maybe_entity = get_player_with_id(&ecs, &player_id);
         if maybe_entity.is_none() {
-            println!("Entity ID {} doesn't exist!", &for_name);
+            println!("Entity ID {} doesn't exist!", &player_id);
             return;
         }
     }
@@ -45,12 +45,12 @@ pub fn handle_input(ecs: &mut World, input: &str, for_name: String) {
     };
 }
 
-pub fn handle_click(ecs: &mut World, x: i32, y: i32, for_name: String) {
+pub fn handle_click(ecs: &mut World, x: i32, y: i32, player_id: &String) {
     let maybe_entity;
     {
-        maybe_entity = get_entity_for_name(&ecs, &for_name);
+        maybe_entity = get_player_with_id(&ecs, &player_id);
         if maybe_entity.is_none() {
-            println!("Entity ID {} doesn't exist!", &for_name);
+            println!("Entity ID {} doesn't exist!", &player_id);
             return;
         }
     }
@@ -73,12 +73,12 @@ pub fn censor_chat_input(chat_input: &str) -> String {
 }
 
 /// Censor any profanity considering we're about to render the input
-pub fn handle_chat_input(mut ecs: &mut World, chat_input: &str, for_name: String) {
+pub fn handle_chat_input(mut ecs: &mut World, chat_input: &str, player_id: &String) {
     let maybe_entity;
     {
-        maybe_entity = get_entity_for_name(&ecs, &for_name);
+        maybe_entity = get_player_with_id(&ecs, &player_id);
         if maybe_entity.is_none() {
-            println!("Entity ID {} doesn't exist!", &for_name);
+            println!("Entity ID {} doesn't exist!", &player_id);
             return;
         }
     }
@@ -117,8 +117,12 @@ impl State {
 
     pub fn handle_player_input(&mut self, player_input: PlayerInput) {
         match player_input {
-            PlayerInput::Click { id, x, y } => handle_click(&mut self.ecs, x, y, id),
-            PlayerInput::Chat { id, message } => handle_chat_input(&mut self.ecs, &message, id),
+            PlayerInput::CreatePlayer { id, name } => {
+                spawn_crab(&mut self.ecs, &id, &censor_chat_input(&name), false)
+            }
+            PlayerInput::DeletePlayer { id } => delete_player_with_id(&mut self.ecs, &id),
+            PlayerInput::Click { id, x, y } => handle_click(&mut self.ecs, x, y, &id),
+            PlayerInput::Chat { id, message } => handle_chat_input(&mut self.ecs, &message, &id),
             _ => {}
         }
     }
@@ -156,12 +160,11 @@ pub fn initialize_ecs(mut ecs: &mut World, width: i32, height: i32, seed: u64) {
     // Create some initial entities to our map
     fill_map(&mut ecs, &map, &mut rng);
 
-    // Create our crabs
-    spawn_crab(&mut ecs, &map, &mut rng, "Ferris", false);
-    spawn_crab(&mut ecs, &map, &mut rng, "Chris", true);
-    spawn_crab(&mut ecs, &map, &mut rng, "Tammy", true);
-
     // Insert resources into ECS
     ecs.insert(map);
     ecs.insert(rng);
+
+    // Create our crabs
+    spawn_crab(&mut ecs, "Chris", "Chris", true);
+    spawn_crab(&mut ecs, "Tammy", "Tammy", true);
 }
