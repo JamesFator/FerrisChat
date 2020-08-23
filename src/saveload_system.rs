@@ -54,7 +54,9 @@ pub fn serialize_ecs(ecs: &mut World) -> String {
         WantsToMoveTo,
         Disappearing,
         CarriedBy,
-        CrabAI
+        CrabAI,
+        WantsToBePickedUp,
+        WantsToStab
     );
 
     // TODO: Compress serde?
@@ -132,7 +134,9 @@ pub fn load_game(ecs: &mut World, package_save_str: String) {
             WantsToMoveTo,
             Disappearing,
             CarriedBy,
-            CrabAI
+            CrabAI,
+            WantsToBePickedUp,
+            WantsToStab
         );
     }
 

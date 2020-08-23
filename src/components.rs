@@ -93,3 +93,9 @@ pub struct CrabAI {
     pub walk_speed: i16,
     pub sleep_duration: i16,
 }
+
+#[derive(Component, Clone, Deserialize, Serialize)]
+pub struct WantsToBePickedUp {}
+
+#[derive(Component, Clone, Deserialize, Serialize)]
+pub struct WantsToStab {}

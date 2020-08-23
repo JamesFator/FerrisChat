@@ -10,3 +10,4 @@ pub mod movement;
 pub mod saveload_system;
 pub mod state;
 pub mod string_writer;
+pub mod weapons;

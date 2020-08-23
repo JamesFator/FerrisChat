@@ -3,6 +3,7 @@ use crate::map::{get_random_location_of_tile, Map, TileType};
 use oorandom::Rand32;
 use specs::prelude::*;
 use specs::saveload::{MarkedBuilder, SimpleMarker};
+use specs::world::EntitiesRes;
 use std::ops::Range;
 
 const MAXTREES: i32 = 20;
@@ -23,18 +24,14 @@ pub fn get_player_with_id(ecs: &World, player_id: &String) -> Option<Entity> {
     return None;
 }
 
-pub fn delete_player_with_id(ecs: &mut World, player_id: &String) {
-    let maybe_entity = get_player_with_id(&ecs, &player_id);
-    if maybe_entity.is_none() {
-        return;
-    }
-    let player_entity = maybe_entity.unwrap();
-
+pub fn delete_player(
+    entities: &Read<EntitiesRes>,
+    carried_bys: &ReadStorage<CarriedBy>,
+    player_entity: Entity,
+) {
     // Delete the player and all entities they were carrying
-    let entities = ecs.entities();
-    let carried_bys = ecs.read_storage::<CarriedBy>();
     let mut entities_to_delete = Vec::new();
-    for (entity, carried_by) in (&entities, &carried_bys).join() {
+    for (entity, carried_by) in (entities, carried_bys).join() {
         if carried_by.owner == player_entity {
             entities_to_delete.push(entity);
         }
@@ -42,6 +39,28 @@ pub fn delete_player_with_id(ecs: &mut World, player_id: &String) {
     entities_to_delete.push(player_entity);
     for entity in entities_to_delete.iter() {
         entities.delete(*entity).expect("Failed to delete entity");
+    }
+}
+
+pub fn delete_player_with_id(mut ecs: &mut World, player_id: &String) {
+    let maybe_entity = get_player_with_id(&ecs, &player_id);
+    if maybe_entity.is_none() {
+        return;
+    }
+    let player_entity = maybe_entity.unwrap();
+    let mut drop_location: Option<Location> = None;
+    {
+        if let Some(location) = ecs.read_storage::<Location>().get(player_entity) {
+            drop_location = Some(location.clone())
+        }
+    }
+    delete_player(
+        &ecs.entities(),
+        &ecs.read_storage::<CarriedBy>(),
+        player_entity,
+    );
+    if let Some(location) = drop_location {
+        create_mushroom_cloud(&mut ecs, location.clone());
     }
 }
 
@@ -226,9 +245,11 @@ pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
         .with(TextRenderable {
             text: String::from("🔪"),
             font_size: 40_f64,
-            offset_x: 5_f64,
-            offset_y: 0_f64,
+            offset_x: 5.2,
+            offset_y: 3.3,
         })
+        .with(WantsToBePickedUp {})
+        .with(WantsToStab {})
         .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
@@ -270,8 +291,42 @@ pub fn create_poop(ecs: &mut World, location: Location) {
             offset_y: 3_f64,
         })
         .with(Disappearing {
-            total_ticks: 100,
+            total_ticks: 20,
             ticks_left: 100,
+        })
+        .marked::<SimpleMarker<EntityMarker>>()
+        .build();
+}
+
+pub fn create_blood_splatter(ecs: &mut World, location: Location) {
+    ecs.create_entity()
+        .with(location)
+        .with(Renderable { render_order: 3 })
+        .with(GraphicRenderable {
+            image_name: String::from("blood_splatter"),
+            offset_x: -5_f64,
+            offset_y: -5_f64,
+        })
+        .with(Disappearing {
+            total_ticks: 20,
+            ticks_left: 100,
+        })
+        .marked::<SimpleMarker<EntityMarker>>()
+        .build();
+}
+
+pub fn create_mushroom_cloud(ecs: &mut World, location: Location) {
+    ecs.create_entity()
+        .with(location)
+        .with(Renderable { render_order: 0 })
+        .with(GraphicRenderable {
+            image_name: String::from("mushroom_cloud"),
+            offset_x: -5_f64,
+            offset_y: -5_f64,
+        })
+        .with(Disappearing {
+            total_ticks: 20,
+            ticks_left: 20,
         })
         .marked::<SimpleMarker<EntityMarker>>()
         .build();

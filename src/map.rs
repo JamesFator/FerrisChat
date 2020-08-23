@@ -3,6 +3,16 @@ use oorandom::Rand32;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
+pub fn euclidean_distance(a: &Location, b: &Location) -> f64 {
+    ((a.x - b.x).pow(2) as f64 + (a.y - b.y).pow(2) as f64).sqrt()
+}
+
+/// Determine if two locations are close enough where we'd consider it reasonable for
+/// the player to pick up an item.
+pub fn within_pickup_distance(a: &Location, b: &Location) -> bool {
+    euclidean_distance(&a, &b) < 5.0
+}
+
 #[derive(PartialEq, Copy, Clone, Deserialize, Serialize)]
 pub enum TileType {
     Water,

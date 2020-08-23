@@ -6,13 +6,14 @@ use specs::prelude::*;
 use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
 use crate::animation::{AnimationSystem, DisappearingSystem};
-use crate::carry::CarrySystem;
+use crate::carry::{CarrySystem, PickUpSystem};
 use crate::components::*;
 use crate::crab_ai::CrabAISystem;
 use crate::entities::*;
 use crate::map::{valid_walking_location, Map};
 use crate::movement::MovementSystem;
 use crate::saveload_system::{serialize_ecs, serialize_map, PlayerInput};
+use crate::weapons::StabSystem;
 
 pub fn handle_input(ecs: &mut World, input: &str, player_id: &String) {
     let maybe_entity;
@@ -97,10 +98,13 @@ impl State {
         movement_system.run_now(&self.ecs);
         let mut disappearing_system = DisappearingSystem {};
         disappearing_system.run_now(&self.ecs);
+        let mut pick_up_system = PickUpSystem {}; // PickUp before Carry so we can update location
+        pick_up_system.run_now(&self.ecs);
         let mut carry_system = CarrySystem {};
         carry_system.run_now(&self.ecs);
         let mut crab_ai_system = CrabAISystem {};
         crab_ai_system.run_now(&self.ecs);
+        StabSystem::run_now_manually(&mut self.ecs);
         let mut animation_system = AnimationSystem {};
         animation_system.run_now(&self.ecs);
 
@@ -146,6 +150,8 @@ pub fn initialize_ecs(mut ecs: &mut World, width: i32, height: i32, seed: u64) {
     ecs.register::<Disappearing>();
     ecs.register::<CarriedBy>();
     ecs.register::<CrabAI>();
+    ecs.register::<WantsToBePickedUp>();
+    ecs.register::<WantsToStab>();
 
     // Serialization helpers
     ecs.register::<SimpleMarker<EntityMarker>>();
