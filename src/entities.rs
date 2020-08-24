@@ -168,15 +168,18 @@ pub fn spawn_crab(mut ecs: &mut World, id: &str, name: &str, ai: bool) {
 
     let entity = crab.marked::<SimpleMarker<EntityMarker>>().build();
 
+    // Create drop shadow for entity
+    create_drop_shadow(&mut ecs, entity);
+
     // It not AI, then player character, so spawn on beach
     if !ai {
-        create_wave_for_entity(&mut ecs, &entity);
+        create_wave_for_entity(&mut ecs, entity);
     }
 }
 
-fn create_wave_for_entity(ecs: &mut World, for_entity: &Entity) {
+fn create_wave_for_entity(ecs: &mut World, for_entity: Entity) {
     ecs.create_entity()
-        .with(CarriedBy { owner: *for_entity })
+        .with(CarriedBy { owner: for_entity })
         .with(Renderable { render_order: 0 })
         .with(GraphicRenderable {
             image_name: String::from("water_wave_0"),
@@ -328,6 +331,19 @@ pub fn create_mushroom_cloud(ecs: &mut World, location: Location) {
         .with(Disappearing {
             total_ticks: 20,
             ticks_left: 20,
+        })
+        .marked::<SimpleMarker<EntityMarker>>()
+        .build();
+}
+
+pub fn create_drop_shadow(ecs: &mut World, for_entity: Entity) {
+    ecs.create_entity()
+        .with(CarriedBy { owner: for_entity })
+        .with(Renderable { render_order: 4 })
+        .with(GraphicRenderable {
+            image_name: String::from("drop_shadow"),
+            offset_x: 0_f64,
+            offset_y: 0_f64,
         })
         .marked::<SimpleMarker<EntityMarker>>()
         .build();
