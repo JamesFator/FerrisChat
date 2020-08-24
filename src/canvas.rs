@@ -79,6 +79,16 @@ pub struct Canvas {
     height: u32,
 }
 
+const WATER_TOP_COLOR: &str = "#67bde0";
+const WATER_LEFT_COLOR: &str = "#41add8";
+const WATER_RIGHT_COLOR: &str = "#95d1e9";
+const SAND_TOP_COLOR: &str = "#fae7c9";
+const SAND_LEFT_COLOR: &str = "#f4cc8a";
+const SAND_RIGHT_COLOR: &str = "#fdf5e8";
+const GRASS_TOP_COLOR: &str = "#56b000";
+const GRASS_LEFT_COLOR: &str = "#3e8000";
+const GRASS_RIGHT_COLOR: &str = "#6fe600";
+
 impl Canvas {
     pub fn new(attr_id: &str, width: u32, height: u32) -> Canvas {
         let canvas: CanvasElement = document()
@@ -90,8 +100,9 @@ impl Canvas {
 
         let ctx: CanvasRenderingContext2d = canvas.get_context().unwrap();
 
-        let scaled_width = canvas.width() as f64 / width as f64;
-        let scaled_height = canvas.height() as f64 / height as f64;
+        let scaled_width = canvas.width() as f64 / width as f64 * 2.0;
+        // x0.99 because bottom was being trimmed and I'm a shit programmer.
+        let scaled_height = canvas.height() as f64 / height as f64 * 0.99;
 
         Canvas {
             canvas,
@@ -103,12 +114,133 @@ impl Canvas {
         }
     }
 
+    pub fn convert_from_screen(
+        &self,
+        x: f64,
+        y: f64,
+        canvas_buffer_top: f64,
+        canvas_buffer_left: f64,
+    ) -> (f64, f64) {
+        let relative_x = (x - self.width as f64 * 4.0 - canvas_buffer_left) / self.scaled_width;
+        let relative_y = (y - self.scaled_height - canvas_buffer_top) / self.scaled_height;
+        let x = (relative_y + relative_x).floor();
+        let y = (relative_y - relative_x).floor();
+        (x, y)
+    }
+
+    pub fn convert_to_isometric(&self, x: i32, y: i32) -> (f64, f64) {
+        let screen_x = (x - y) as f64 * self.scaled_width / 2.0 + (self.width as f64 * 4.0);
+        let screen_y = (x + y) as f64 * self.scaled_height / 2.0 + self.scaled_height;
+
+        (screen_x, screen_y)
+    }
+
+    fn draw_tile(&self, orig_x: usize, orig_y: usize, tiles: &Vec<Vec<TileType>>) {
+        let tile_type = tiles[orig_x][orig_y];
+        if tile_type == TileType::Void || tile_type == TileType::Water {
+            return; // Shouldn't render void tiles
+        }
+        let (height_scale, top_color, left_color, right_color) = match tile_type {
+            TileType::Water => (0.25, WATER_TOP_COLOR, WATER_LEFT_COLOR, WATER_RIGHT_COLOR),
+            TileType::Sand => (0.0, SAND_TOP_COLOR, SAND_LEFT_COLOR, SAND_RIGHT_COLOR),
+            TileType::Grass => (-0.5, GRASS_TOP_COLOR, GRASS_LEFT_COLOR, GRASS_RIGHT_COLOR),
+            TileType::Void => (0.0, "", "", ""),
+        };
+        let paint_left_face = !(orig_y + 1 < (self.height - 1) as usize)
+            || (tile_type as i32) > tiles[orig_x][orig_y + 1] as i32;
+        let paint_right_face = !(orig_x + 1 < (self.width - 1) as usize)
+            || (tile_type as i32) > tiles[orig_x + 1][orig_y] as i32;
+        let height_modifier = height_scale * self.scaled_height;
+
+        // Draw the isometric tile
+        let (x, y) = self.convert_to_isometric(orig_x as i32, orig_y as i32);
+
+        // Draw the tile top
+        // --------------------------------------------
+        //    step 1  |  step 2  |  step 3  |  step 4
+        // --------------------------------------------
+        //    /       |  /       |  /       |  /\
+        //            |  \       |  \/      |  \/
+        // --------------------------------------------
+        self.ctx.begin_path();
+        self.ctx
+            .move_to(x - self.scaled_width / 2.0, height_modifier + y);
+        self.ctx.line_to(
+            x - self.scaled_width,
+            height_modifier + y + self.scaled_height / 2.0,
+        );
+        self.ctx.line_to(
+            x - self.scaled_width / 2.0,
+            height_modifier + y + self.scaled_height,
+        );
+        self.ctx
+            .line_to(x, height_modifier + y + self.scaled_height / 2.0);
+        self.ctx
+            .line_to(x - self.scaled_width / 2.0, height_modifier + y);
+
+        // self.ctx.stroke();
+        self.ctx.set_fill_style_color(top_color);
+        self.ctx.fill(FillRule::NonZero);
+
+        if paint_left_face {
+            // --------------------------------------------
+            //    step 1  |  step 2  |  step 3  |  step 4
+            // --------------------------------------------
+            //     \      |    \     |    \     |    |\
+            //            |    |     |   \|     |    \|
+            // --------------------------------------------
+            self.ctx.begin_path();
+            self.ctx.move_to(
+                x - self.scaled_width,
+                height_modifier + y + self.scaled_height / 2.0,
+            );
+            self.ctx.line_to(
+                x - self.scaled_width / 2.0,
+                height_modifier + y + self.scaled_height,
+            );
+            self.ctx
+                .line_to(x - self.scaled_width / 2.0, y + self.scaled_width);
+            self.ctx
+                .line_to(x - self.scaled_width, y + self.scaled_height * 1.5);
+            self.ctx.line_to(
+                x - self.scaled_width,
+                height_modifier + y + self.scaled_height / 2.0,
+            );
+
+            // self.ctx.stroke();
+            self.ctx.set_fill_style_color(left_color);
+            self.ctx.fill(FillRule::NonZero);
+        }
+
+        if paint_right_face {
+            // --------------------------------------------
+            //    step 1  |  step 2  |  step 3  |  step 4
+            // --------------------------------------------
+            //     /      |     /    |     /    |      /|
+            //            |    |     |    |/    |     |/
+            // --------------------------------------------
+            self.ctx.begin_path();
+            self.ctx
+                .move_to(x, height_modifier + y + self.scaled_height / 2.0);
+            self.ctx.line_to(
+                x - self.scaled_width / 2.0,
+                height_modifier + y + self.scaled_height,
+            );
+            self.ctx
+                .line_to(x - self.scaled_width / 2.0, y + self.scaled_width);
+            self.ctx.line_to(x, y + self.scaled_height * 1.5);
+            self.ctx
+                .line_to(x, height_modifier + y + self.scaled_height / 2.0);
+
+            // self.ctx.stroke();
+            self.ctx.set_fill_style_color(right_color);
+            self.ctx.fill(FillRule::NonZero);
+        }
+    }
+
     pub fn draw_blank_map(&self, map: &Map) {
-        let water_color = "#67bde0";
-        let sand_color = "#fae7c9";
-        let grass_color = "#56b000";
         // Fill background with water color
-        self.ctx.set_fill_style_color(water_color);
+        self.ctx.set_fill_style_color(WATER_TOP_COLOR);
         self.ctx.fill_rect(
             0.0,
             0.0,
@@ -117,25 +249,9 @@ impl Canvas {
         );
 
         // Iterate through the tiles, drawing the color for each
-        for x in 0usize..(map.width as usize - 1usize) {
-            for y in 0usize..(map.width as usize - 1usize) {
-                match map.tiles[x][y] {
-                    TileType::Water => {
-                        self.ctx.set_fill_style_color(water_color);
-                    }
-                    TileType::Sand => {
-                        self.ctx.set_fill_style_color(sand_color);
-                    }
-                    TileType::Grass => {
-                        self.ctx.set_fill_style_color(grass_color);
-                    }
-                };
-                self.ctx.fill_rect(
-                    x as f64 * self.scaled_width,
-                    y as f64 * self.scaled_height,
-                    self.scaled_width,
-                    self.scaled_height,
-                );
+        for x in 0..map.width - 1 {
+            for y in 0..map.width - 1 {
+                self.draw_tile(x as usize, y as usize, &map.tiles);
             }
         }
     }
@@ -148,10 +264,12 @@ impl Canvas {
     ) {
         self.ctx.set_global_alpha(alpha);
 
-        let x = (location.x as f64 * self.scaled_width)
-            + (self.scaled_width * graphic_renderable.offset_x);
-        let y = (location.y as f64 * self.scaled_height)
-            + (self.scaled_height * graphic_renderable.offset_y);
+        let graphic_width = self.scaled_width * 5_f64;
+        let graphic_height = self.scaled_height * 10_f64;
+
+        let (iso_x, iso_y) = self.convert_to_isometric(location.x as i32, location.y as i32);
+        let x = iso_x + graphic_renderable.offset_x * self.scaled_width - graphic_width / 2.0;
+        let y = iso_y + graphic_renderable.offset_y * self.scaled_height - graphic_height / 2.0;
 
         let img_element: stdweb::web::html_element::ImageElement = stdweb::web::document()
             .get_element_by_id(&graphic_renderable.image_name)
@@ -159,13 +277,7 @@ impl Canvas {
             .try_into()
             .unwrap();
         self.ctx
-            .draw_image_d(
-                img_element,
-                x,
-                y,
-                self.scaled_width * 10_f64,
-                self.scaled_height * 10_f64,
-            )
+            .draw_image_d(img_element, x, y, graphic_width, graphic_height)
             .expect("draw_image_d failed");
 
         self.ctx.set_global_alpha(1f64);
@@ -183,10 +295,9 @@ impl Canvas {
             .expect("Canvas measure_text failed")
             .get_width();
 
-        let x = (location.x as f64 * self.scaled_width) - (text_width / 2_f64)
-            + (self.scaled_width * text_renderable.offset_x);
-        let y = (location.y as f64 * self.scaled_height) - (text_height / 2_f64)
-            + (self.scaled_height * (1f64 + text_renderable.offset_y));
+        let (iso_x, iso_y) = self.convert_to_isometric(location.x as i32, location.y as i32);
+        let x = iso_x - (text_width / 2_f64) + text_renderable.offset_x * self.scaled_width;
+        let y = iso_y + text_renderable.offset_y * self.scaled_height;
 
         self.ctx.set_fill_style_color("black");
         self.ctx
@@ -202,10 +313,9 @@ impl Canvas {
         chat_renderable: &ChatRenderable,
     ) {
         self.ctx.set_font("20px helvetica");
-        let x =
-            location.x as f64 * self.scaled_width + self.scaled_width * chat_renderable.offset_x;
-        let y = location.y as f64 * self.scaled_height
-            + self.scaled_height * (1f64 + chat_renderable.offset_y);
+        let (iso_x, iso_y) = self.convert_to_isometric(location.x as i32, location.y as i32);
+        let x = iso_x as f64 + chat_renderable.offset_x * self.scaled_width;
+        let y = iso_y as f64 + (1f64 + chat_renderable.offset_y) * self.scaled_height;
         let w = self
             .ctx
             .measure_text(&chat_renderable.text)

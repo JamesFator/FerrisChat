@@ -88,7 +88,7 @@ pub fn add_fps_tracker(ecs: &mut World, tracker: &FPSTracker) {
     }
     ecs.create_entity()
         .with(tracker.clone())
-        .with(Location { x: 5, y: 5 })
+        .with(Location { x: 0, y: 5 })
         .with(Renderable { render_order: 0 })
         .with(TextRenderable {
             text: format!("FPS: {}", tracker.prev_fps),
@@ -146,12 +146,12 @@ pub fn spawn_crab(mut ecs: &mut World, id: &str, name: &str, ai: bool) {
             text: name.into(),
             font_size: 20_f64,
             offset_x: 0_f64,
-            offset_y: 5_f64,
+            offset_y: 4_f64,
         })
         .with(GraphicRenderable {
             image_name: String::from("rustacean_right"),
-            offset_x: -5_f64,
-            offset_y: -5_f64,
+            offset_x: 0_f64,
+            offset_y: 0_f64,
         })
         .with(GraphicAnimatable {
             image_names: vec![
@@ -180,8 +180,8 @@ fn create_wave_for_entity(ecs: &mut World, for_entity: &Entity) {
         .with(Renderable { render_order: 0 })
         .with(GraphicRenderable {
             image_name: String::from("water_wave_0"),
-            offset_x: -5_f64,
-            offset_y: -5_f64,
+            offset_x: 0_f64,
+            offset_y: 0_f64,
         })
         .with(GraphicAnimatable {
             image_names: vec![
@@ -206,8 +206,9 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
     {
         let entities = ecs.entities();
         let carried_bys = ecs.read_storage::<CarriedBy>();
+        let chat_renderables = ecs.read_storage::<ChatRenderable>();
         let mut chats_to_remove = Vec::new();
-        for (entity, carried_by) in (&entities, &carried_bys).join() {
+        for (entity, carried_by, _) in (&entities, &carried_bys, &chat_renderables).join() {
             if for_entity.eq(&carried_by.owner) {
                 chats_to_remove.push(entity);
             }
@@ -223,7 +224,7 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
         .with(Renderable { render_order: 0 })
         .with(ChatRenderable {
             text: text,
-            offset_x: -5_f64,
+            offset_x: -2_f64,
             offset_y: -10_f64,
         })
         .with(Disappearing {
@@ -245,8 +246,8 @@ pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
         .with(TextRenderable {
             text: String::from("🔪"),
             font_size: 40_f64,
-            offset_x: 5.2,
-            offset_y: 3.3,
+            offset_x: 2.5_f64,
+            offset_y: 2_f64,
         })
         .with(WantsToBePickedUp {})
         .with(WantsToStab {})
@@ -261,7 +262,7 @@ pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
         .with(TextRenderable {
             text: String::from("🌴"),
             font_size: 40_f64,
-            offset_x: 0_f64,
+            offset_x: -0.5_f64,
             offset_y: 0_f64,
         })
         .marked::<SimpleMarker<EntityMarker>>()
@@ -301,11 +302,11 @@ pub fn create_poop(ecs: &mut World, location: Location) {
 pub fn create_blood_splatter(ecs: &mut World, location: Location) {
     ecs.create_entity()
         .with(location)
-        .with(Renderable { render_order: 3 })
+        .with(Renderable { render_order: 5 })
         .with(GraphicRenderable {
             image_name: String::from("blood_splatter"),
-            offset_x: -5_f64,
-            offset_y: -5_f64,
+            offset_x: 0_f64,
+            offset_y: 0_f64,
         })
         .with(Disappearing {
             total_ticks: 20,
@@ -321,8 +322,8 @@ pub fn create_mushroom_cloud(ecs: &mut World, location: Location) {
         .with(Renderable { render_order: 0 })
         .with(GraphicRenderable {
             image_name: String::from("mushroom_cloud"),
-            offset_x: -5_f64,
-            offset_y: -5_f64,
+            offset_x: 0_f64,
+            offset_y: 0_f64,
         })
         .with(Disappearing {
             total_ticks: 20,

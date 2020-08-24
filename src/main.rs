@@ -37,10 +37,10 @@ fn handle_client_input(mut ecs: &mut World, input: &str) {
     handle_input(&mut ecs, input, &player_id);
 }
 
-fn handle_client_click(mut ecs: &mut World, x: i32, y: i32) {
+fn handle_client_click(mut ecs: &mut World, screen_x: i32, screen_y: i32) {
     let player_id;
-    let relative_x;
-    let relative_y;
+    let x: i32;
+    let y: i32;
     {
         player_id = ecs.fetch::<String>().to_string();
         let rect = ecs
@@ -49,19 +49,25 @@ fn handle_client_click(mut ecs: &mut World, x: i32, y: i32) {
             .get_canvas()
             .get_bounding_client_rect();
         let canvas = ecs.fetch::<Canvas>();
-        relative_x = ((x as f64 - rect.get_left() as f64) / canvas.scaled_width) as i32;
-        relative_y = ((y as f64 - rect.get_top() as f64) / canvas.scaled_height) as i32;
+        let iso_coordinates = canvas.convert_from_screen(
+            screen_x as f64,
+            screen_y as f64,
+            rect.get_top(),
+            rect.get_left(),
+        );
+        x = iso_coordinates.0 as i32;
+        y = iso_coordinates.1 as i32;
     }
     let player_input = PlayerInput::Click {
         id: player_id.clone(),
-        x: relative_x,
-        y: relative_y,
+        x,
+        y,
     };
     stdweb::web::window()
         .local_storage()
         .insert("player_input", &serialize_player_input(player_input))
         .expect("Failed to write player_input to local_storage");
-    handle_click(&mut ecs, relative_x, relative_y, &player_id);
+    handle_click(&mut ecs, x, y, &player_id);
 }
 
 /// System for tracking FPS. In main file because depends on stdweb.
@@ -172,6 +178,7 @@ fn main() {
         width,
         height,
         Date::new().get_seconds() as u64,
+        // 1,
     );
 
     js! {
