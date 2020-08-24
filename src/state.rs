@@ -125,6 +125,7 @@ impl State {
                 spawn_crab(&mut self.ecs, &id, &censor_chat_input(&name), false)
             }
             PlayerInput::DeletePlayer { id } => delete_player_with_id(&mut self.ecs, &id),
+            PlayerInput::SpecialInput { id, input } => handle_input(&mut self.ecs, &input, &id),
             PlayerInput::Click { id, x, y } => handle_click(&mut self.ecs, x, y, &id),
             PlayerInput::Chat { id, message } => handle_chat_input(&mut self.ecs, &message, &id),
             _ => {}
