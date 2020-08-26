@@ -136,12 +136,16 @@ pub fn valid_walking_location(map: &Map, wants_to_move: &WantsToMoveTo) -> bool 
 }
 
 /// Return a location which is not TileType::Water
-pub fn get_random_location_of_tile(map: &Map, rng: &mut Rand32, tile_type: TileType) -> Location {
+pub fn get_random_location_of_tile(
+    map: &Map,
+    rng: &mut Rand32,
+    tile_type: Option<TileType>,
+) -> Location {
     let mut x;
     let mut y;
     // Right side of island is where we spawn, so limit x range search for Sand
     let x_range = match tile_type {
-        TileType::Sand => Range {
+        Some(TileType::Sand) => Range {
             start: (map.width as f64 * 0.90) as u32,
             end: map.width as u32 - 1,
         },
@@ -157,7 +161,10 @@ pub fn get_random_location_of_tile(map: &Map, rng: &mut Rand32, tile_type: TileT
     loop {
         x = rng.rand_range(x_range.clone());
         y = rng.rand_range(y_range.clone());
-        if map.tiles[x as usize][y as usize] == tile_type {
+        let cur_tile = map.tiles[x as usize][y as usize];
+        if tile_type.is_none() && cur_tile != TileType::Void && cur_tile != TileType::Water {
+            break;
+        } else if tile_type.is_some() && cur_tile == tile_type.unwrap() {
             break;
         }
     }

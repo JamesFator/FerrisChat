@@ -89,7 +89,7 @@ async fn run(
     shared_incr_state: AsyncStatePtr,
     shared_input_queue: AsyncStatePtr,
 ) {
-    let addr = "127.0.0.1:3012";
+    let addr = "0.0.0.0:3012";
     let mut listener = TcpListener::bind(&addr).await.expect("Can't listen");
     println!("Listening on: {}", addr);
 

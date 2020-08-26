@@ -189,7 +189,7 @@ fn main() {
         window.localStorage.setItem("save_state", "");
 
         // Attempt to connect to server
-        var socket = new WebSocket("ws://127.0.0.1:3012");
+        var socket = new WebSocket("ws://192.168.1.83:3012");
 
         socket.onmessage = function(event) {
             console.log("save data received");

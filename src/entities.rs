@@ -7,7 +7,6 @@ use specs::world::EntitiesRes;
 use std::ops::Range;
 
 const MAXTREES: i32 = 20;
-const MAXKNIVES: i32 = 1;
 
 //
 // Util functions
@@ -117,8 +116,8 @@ pub fn spawn_crab(mut ecs: &mut World, id: &str, name: &str, ai: bool) {
         let map = ecs.read_resource::<Map>();
         let mut rng = ecs.write_resource::<Rand32>();
         location = match ai {
-            true => get_random_location_of_tile(&map, &mut rng, TileType::Grass),
-            false => get_random_location_of_tile(&map, &mut rng, TileType::Sand),
+            true => get_random_location_of_tile(&map, &mut rng, Some(TileType::Grass)),
+            false => get_random_location_of_tile(&map, &mut rng, Some(TileType::Sand)),
         };
         if ai {
             let crab_state = if rng.rand_float() > 0.5 {
@@ -242,22 +241,6 @@ pub fn create_chat_bubble(ecs: &mut World, text: String, for_entity: Entity) {
 // World entities
 //
 
-pub fn create_knife(ecs: &mut World, x: i32, y: i32) {
-    ecs.create_entity()
-        .with(Location { x, y })
-        .with(Renderable { render_order: 3 })
-        .with(TextRenderable {
-            text: String::from("🔪"),
-            font_size: 40_f64,
-            offset_x: 2.5_f64,
-            offset_y: 2_f64,
-        })
-        .with(WantsToBePickedUp {})
-        .with(WantsToStab {})
-        .marked::<SimpleMarker<EntityMarker>>()
-        .build();
-}
-
 pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
     ecs.create_entity()
         .with(Location { x, y })
@@ -275,14 +258,20 @@ pub fn create_tree(ecs: &mut World, x: i32, y: i32) {
 /// Fill the map with entities
 pub fn fill_map(ecs: &mut World, map: &Map, mut rng: &mut Rand32) {
     for _ in 0..MAXTREES {
-        let location = get_random_location_of_tile(&map, &mut rng, TileType::Grass);
+        let location = get_random_location_of_tile(&map, &mut rng, Some(TileType::Grass));
         create_tree(ecs, location.x, location.y);
     }
-    for _ in 0..MAXKNIVES {
-        let location = get_random_location_of_tile(&map, &mut rng, TileType::Grass);
-        create_knife(ecs, location.x, location.y);
-    }
+    create_knife(
+        ecs,
+        get_random_location_of_tile(&map, &mut rng, Some(TileType::Grass)),
+    );
+    create_hat(ecs, get_random_location_of_tile(&map, &mut rng, None));
+    create_glasses(ecs, get_random_location_of_tile(&map, &mut rng, None));
 }
+
+//
+// Effects
+//
 
 pub fn create_poop(ecs: &mut World, location: Location) {
     ecs.create_entity()
@@ -345,6 +334,64 @@ pub fn create_drop_shadow(ecs: &mut World, for_entity: Entity) {
             offset_x: 0_f64,
             offset_y: 0_f64,
         })
+        .marked::<SimpleMarker<EntityMarker>>()
+        .build();
+}
+
+//
+// Items
+//
+
+pub fn create_knife(ecs: &mut World, location: Location) {
+    ecs.create_entity()
+        .with(location)
+        .with(Renderable { render_order: 3 })
+        .with(TextRenderable {
+            text: String::from("🔪"),
+            font_size: 40_f64,
+            offset_x: 2.5_f64,
+            offset_y: 2_f64,
+        })
+        .with(Disappearing {
+            total_ticks: 20,
+            ticks_left: 200,
+        })
+        .with(WantsToBePickedUp {})
+        .with(WantsToStab {})
+        .marked::<SimpleMarker<EntityMarker>>()
+        .build();
+}
+
+//
+// Clothing
+//
+
+pub fn create_hat(ecs: &mut World, location: Location) {
+    ecs.create_entity()
+        .with(location)
+        .with(Renderable { render_order: 0 })
+        .with(TextRenderable {
+            text: String::from("🎩"),
+            font_size: 20_f64,
+            offset_x: 0_f64,
+            offset_y: -2_f64,
+        })
+        .with(WantsToBePickedUp {})
+        .marked::<SimpleMarker<EntityMarker>>()
+        .build();
+}
+
+pub fn create_glasses(ecs: &mut World, location: Location) {
+    ecs.create_entity()
+        .with(location)
+        .with(Renderable { render_order: 0 })
+        .with(TextRenderable {
+            text: String::from("🕶"),
+            font_size: 20_f64,
+            offset_x: 0.2_f64,
+            offset_y: 1.9_f64,
+        })
+        .with(WantsToBePickedUp {})
         .marked::<SimpleMarker<EntityMarker>>()
         .build();
 }
