@@ -23,7 +23,7 @@ $ cargo run --bin server --features server
 
 # Running standalone client
 $ cargo web start --bin ferris_chat_client --features client
-# Load http://127.0.0.1:8000/
+# Load http://127.0.0.1:8000/ferris_chat.html
 ```
 
 ## Resources
