@@ -188,20 +188,20 @@ fn main() {
         // Clear save_state storage in case server is not up
         window.localStorage.setItem("save_state", "");
 
-        // Attempt to connect to server
-        var socket = new WebSocket("ws://192.168.1.83:3012");
+        // // Attempt to connect to server
+        // var socket = new WebSocket("ws://192.168.1.83:3012");
 
-        socket.onmessage = function(event) {
-            console.log("save data received");
-            window.localStorage.setItem("save_state", event.data);
+        // socket.onmessage = function(event) {
+        //     console.log("save data received");
+        //     window.localStorage.setItem("save_state", event.data);
 
-            // Send player_input back
-            var player_input = window.localStorage.getItem("player_input");
-            if (player_input !== null && player_input != "") {
-                socket.send(player_input);
-                window.localStorage.setItem("player_input", "");
-            }
-        };
+        //     // Send player_input back
+        //     var player_input = window.localStorage.getItem("player_input");
+        //     if (player_input !== null && player_input != "") {
+        //         socket.send(player_input);
+        //         window.localStorage.setItem("player_input", "");
+        //     }
+        // };
     }
 
     // Canvas is where we do all our rendering
